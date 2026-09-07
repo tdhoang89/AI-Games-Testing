@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chrono Tether</title>
+    <style>
+        :root {
+            --cyan: #00ffff;
+            --pink: #ff00ff;
+            --dark: #0a0512;
+            --red: #ff3366;
+        }
+        
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--dark);
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            touch-action: none; /* Prevent scroll on touch */
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to canvas */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(10, 5, 18, 0.85);
+            padding: 40px;
+            border: 2px solid var(--cyan);
+            border-radius: 15px;
+            box-shadow: 0 0 20px var(--cyan), inset 0 0 20px var(--cyan);
+            backdrop-filter: blur(5px);
+            pointer-events: auto; /* Re-enable clicks for buttons */
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin: 0 0 10px 0;
+            color: white;
+            text-shadow: 0 0 10px var(--cyan), 0 0 20px var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 5px;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin: 0 0 20px 0;
+            color: var(--pink);
+            text-shadow: 0 0 10px var(--pink);
+        }
+
+        p {
+            font-size: 1.2rem;
+            max-width: 400px;
+            line-height: 1.5;
+            margin-bottom: 30px;
+            color: #ccc;
+        }
+
+        .highlight {
+            color: var(--cyan);
+            font-weight: bold;
+        }
+
+        .highlight-pink {
+            color: var(--pink);
+            font-weight: bold;
+        }
+
+        button {
+            background: transparent;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border: 2px solid var(--pink);
+            padding: 15px 40px;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--pink), inset 0 0 10px var(--pink);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background: var(--pink);
+            box-shadow: 0 0 30px var(--pink), inset 0 0 20px white;
+            text-shadow: 0 0 5px white;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 5;
+            pointer-events: none;
+            display: none;
+        }
+
+        #score-display {
+            font-size: 2.5rem;
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 0 10px var(--cyan);
+        }
+
+        #multiplier-display {
+            font-size: 1.5rem;
+            color: var(--pink);
+            text-shadow: 0 0 10px var(--pink);
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        
+        #multiplier-display.active {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+        
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scanlines"></div>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="hud">
+        <div id="score-display">0</div>
+        <div id="multiplier-display">x1</div>
+    </div>
+
+    <div id="ui-layer">
+        <div id="start-screen" class="screen active">
+            <h1>Chrono Tether</h1>
+            <p>
+                Hold <span class="highlight">CLICK/TOUCH</span> to create an anchor.<br><br>
+                Your <span class="highlight">LUMEN</span> will orbit the anchor.<br>
+                Release to fly and trigger <span class="highlight-pink">TIME DILATION</span>.<br><br>
+                Slice red enemies with your <span class="highlight">TETHER LINE</span> to destroy them.<br>
+                Don't let them touch you!
+            </p>
+            <button id="start-btn">Initiate</button>
+        </div>
+
+        <div id="game-over-screen" class="screen">
+            <h1>Signal Lost</h1>
+            <h2 id="final-score">Score: 0</h2>
+            <button id="restart-btn">Re-engage</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false }); // Optimize for no transparency on base layer
+        
+        // UI Elements
+        const uiStart = document.getElementById('start-screen');
+        const uiGameOver = document.getElementById('game-over-screen');
+        const hud = document.getElementById('hud');
+        const scoreEl = document.getElementById('score-display');
+        const multEl = document.getElementById('multiplier-display');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
+        // Game State
+        let STATE = 'MENU'; // MENU, PLAYING, GAMEOVER
+        let width, height;
+        let score = 0;
+        let combo = 0;
+        let timeScale = 0.3; // Starts untethered (slow-mo)
+        let targetTimeScale = 0.3;
+        let hitstopTimer = 0;
+        let screenShake = 0;
+        let gameDifficultyTime = 0; // Increases over time to spawn faster
+
+        // Entities arrays
+        let lumen;
+        let anchor = { active: false, x: 0, y: 0 };
+        let enemies = [];
+        let particles = [];
+        let floatingTexts = [];
+
+        // Constants
+        const BASE_SPEED = 450;
+        const COLORS = {
+            lumen: '#00ffff',
+            tether: '#ff00ff',
+            enemy: '#ff3366',
+            bg: '#0a0512',
+            trail: 'rgba(0, 255, 255, 0.5)'
+        };
+
+        // Resize handler
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let actx = null;
+
+        function initAudio() {
+            if (!actx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                actx = new AudioContext();
+            }
+            if (actx.state === 'suspended') actx.resume();
+        }
+
+        function playSound(type) {
+            if (!actx) return;
+            const osc = actx.createOscillator();
+            const gain = actx.createGain();
+            osc.connect(gain);
+            gain.connect(actx.destination);
+            
+            const now = actx.currentTime;
+
+            if (type === 'anchor') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'release') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.linearRampToValueAtTime(400, now + 0.2);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'slice') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'death') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(10, now + 1.0);
+                gain.gain.setValueAtTime(0.7, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 1.0);
+                osc.start(now);
+                osc.stop(now + 1.0);
+            }
+        }
+
+        function distSq(p1, p2) {
+            return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2;
+        }
+
+        function dist(p1, p2) {
+            return Math.sqrt(distSq(p1, p2));
+        }
+
+        // Distance from point p to line segment v-w
+        function distToSegmentSq(p, v, w) {
+            let l2 = distSq(v, w);
+            if (l2 === 0) return distSq(p, v);
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return distSq(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
+        }
+
+        class Lumen {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 8;
+                this.speed = BASE_SPEED;
+                
+                // Random initial direction
+                let angle = Math.random() * Math.PI * 2;
+                this.vx = Math.cos(angle) * this.speed;
+                this.vy = Math.sin(angle) * this.speed;
+                
+                this.trail = [];
+                this.orbitRadius = 0;
+                this.orbitAngle = 0;
+                this.orbitDir = 1; // 1 CW, -1 CCW
+            }
+
+            update(dt) {
+                // Trail logic (updated every frame regardless of time scale to keep it smooth)
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 25) this.trail.shift();
+
+                if (anchor.active) {
+                    // Orbital Mechanics
+                    // Angular velocity = v / r
+                    let angularVelocity = (this.speed / this.orbitRadius) * this.orbitDir;
+                    this.orbitAngle += angularVelocity * dt;
+
+                    this.x = anchor.x + this.orbitRadius * Math.cos(this.orbitAngle);
+                    this.y = anchor.y + this.orbitRadius * Math.sin(this.orbitAngle);
+
+                    // Update velocity vector to be tangent for when released
+                    this.vx = -Math.sin(this.orbitAngle) * this.speed * this.orbitDir;
+                    this.vy = Math.cos(this.orbitAngle) * this.speed * this.orbitDir;
+                } else {
+                    // Linear Mechanics
+                    this.x += this.vx * dt;
+                    this.y += this.vy * dt;
+
+                    // Bounce off walls to keep player in bounds
+                    if (this.x < this.radius) { this.x = this.radius; this.vx *= -1; }
+                    if (this.x > width - this.radius) { this.x = width - this.radius; this.vx *= -1; }
+                    if (this.y < this.radius) { this.y = this.radius; this.vy *= -1; }
+                    if (this.y > height - this.radius) { this.y = height - this.radius; this.vy *= -1; }
+                }
+            }
+
+            draw() {
+                // Draw trail
+                if (this.trail.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let i = 1; i < this.trail.length; i++) {
+                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    }
+                    ctx.strokeStyle = COLORS.trail;
+                    ctx.lineWidth = this.radius * 2;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    // Fading trail effect
+                    let grad = ctx.createLinearGradient(this.trail[0].x, this.trail[0].y, this.x, this.y);
+                    grad.addColorStop(0, 'rgba(0, 255, 255, 0)');
+                    grad.addColorStop(1, 'rgba(0, 255, 255, 0.8)');
+                    ctx.strokeStyle = grad;
+                    
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = COLORS.lumen;
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+
+                // Draw Orb
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = COLORS.lumen;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Enemy {
+            constructor() {
+                // Spawn completely outside the screen
+                let spawnDist = 100;
+                let angle = Math.random() * Math.PI * 2;
+                let cx = width / 2;
+                let cy = height / 2;
+                let spawnRadius = Math.max(width, height) / 2 + spawnDist;
+                
+                this.x = cx + Math.cos(angle) * spawnRadius;
+                this.y = cy + Math.sin(angle) * spawnRadius;
+                
+                this.radius = 12;
+                // Speed increases as game progresses
+                this.speed = 100 + Math.random() * 50 + (gameDifficultyTime * 2);
+                this.angle = 0;
+            }
+
+            update(dt) {
+                // Track Lumen
+                this.angle = Math.atan2(lumen.y - this.y, lumen.x - this.x);
+                this.x += Math.cos(this.angle) * this.speed * dt;
+                this.y += Math.sin(this.angle) * this.speed * dt;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle); // Rotate to face direction
+                
+                ctx.beginPath();
+                // Diamond shape
+                ctx.moveTo(this.radius, 0);
+                ctx.lineTo(0, this.radius);
+                ctx.lineTo(-this.radius, 0);
+                ctx.lineTo(0, -this.radius);
+                ctx.closePath();
+                
+                ctx.fillStyle = COLORS.enemy;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = COLORS.enemy;
+                ctx.fill();
+                
+                // Inner core
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(0, 0, 3, 0, Math.PI*2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                let angle = Math.random() * Math.PI * 2;
+                let speed = Math.random() * 300 + 100;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 1.0;
+                this.decay = Math.random() * 2 + 1;
+                this.color = color;
+                this.size = Math.random() * 3 + 1;
+            }
+            
+            update(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.life -= this.decay * dt;
+            }
+            
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class FloatingText {
+            constructor(x, y, text, color) {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.color = color;
+                this.life = 1.0;
+                this.vy = -50; // Move up
+            }
+
+            update(dt) {
+                this.y += this.vy * dt;
+                this.life -= 1.5 * dt;
+            }
+
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.font = 'bold 20px Courier New';
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.globalAlpha = 1.0;
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function triggerAnchor(x, y) {
+            if (STATE !== 'PLAYING') return;
+            
+            anchor.x = x;
+            anchor.y = y;
+            anchor.active = true;
+            targetTimeScale = 1.0; // Snap to normal speed
+            combo = 0; // Reset combo on new tether
+            
+            // Calculate orbital parameters
+            let dx = lumen.x - anchor.x;
+            let dy = lumen.y - anchor.y;
+            lumen.orbitRadius = Math.sqrt(dx*dx + dy*dy);
+            
+            // Prevent division by zero or extreme speeds
+            if (lumen.orbitRadius < 10) lumen.orbitRadius = 10; 
+            
+            lumen.orbitAngle = Math.atan2(dy, dx);
+            
+            // Determine direction based on cross product (radius vector X velocity vector)
+            let cross = (dx * lumen.vy) - (dy * lumen.vx);
+            lumen.orbitDir = cross >= 0 ? 1 : -1;
+            
+            playSound('anchor');
+            createParticles(anchor.x, anchor.y, COLORS.tether, 10);
+            
+            // UI Update
+            multEl.classList.remove('active');
+        }
+
+        function releaseAnchor() {
+            if (STATE !== 'PLAYING') return;
+            if (anchor.active) {
+                anchor.active = false;
+                targetTimeScale = 0.25; // Trigger Time Dilation
+                playSound('release');
+                createParticles(lumen.x, lumen.y, '#fff', 5);
+            }
+        }
+
+        // Mouse Events
+        window.addEventListener('mousedown', (e) => {
+            initAudio(); // Initialize audio on first interaction
+            if (e.target.tagName === 'BUTTON') return; // Ignore buttons
+            triggerAnchor(e.clientX, e.clientY);
+        });
+        window.addEventListener('mouseup', releaseAnchor);
+
+        // Touch Events
+        window.addEventListener('touchstart', (e) => {
+            initAudio();
+            if (e.target.tagName === 'BUTTON') return;
+            e.preventDefault(); // Prevent scrolling
+            triggerAnchor(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: false});
+        window.addEventListener('touchend', (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+            e.preventDefault();
+            releaseAnchor();
+        }, {passive: false});
+
+        function startGame() {
+            initAudio();
+            STATE = 'PLAYING';
+            score = 0;
+            combo = 0;
+            timeScale = 0.25; // Start in time dilation
+            targetTimeScale = 0.25;
+            gameDifficultyTime = 0;
+            
+            scoreEl.innerText = score;
+            multEl.classList.remove('active');
+            
+            uiStart.classList.remove('active');
+            uiGameOver.classList.remove('active');
+            hud.style.display = 'block';
+            
+            lumen = new Lumen(width/2, height/2);
+            anchor.active = false;
+            enemies = [];
+            particles = [];
+            floatingTexts = [];
+        }
+
+        function gameOver() {
+            STATE = 'GAMEOVER';
+            playSound('death');
+            screenShake = 30;
+            createParticles(lumen.x, lumen.y, COLORS.lumen, 50);
+            
+            setTimeout(() => {
+                uiGameOver.classList.add('active');
+                document.getElementById('final-score').innerText = `Score: ${score}`;
+                hud.style.display = 'none';
+            }, 1000);
+        }
+
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        let enemySpawnTimer = 0;
+        function spawnEnemyLogic(dt) {
+            enemySpawnTimer -= dt;
+            // Spawn rate gets faster over time, capped at min interval
+            let spawnInterval = Math.max(0.5, 2.5 - (gameDifficultyTime * 0.05)); 
+            if (enemySpawnTimer <= 0) {
+                enemies.push(new Enemy());
+                enemySpawnTimer = spawnInterval;
+            }
+        }
+
+        function update(realDt) {
+            if (STATE !== 'PLAYING') {
+                // Keep updating particles for death animation
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    particles[i].update(realDt);
+                    if (particles[i].life <= 0) particles.splice(i, 1);
+                }
+                return;
+            }
+
+            gameDifficultyTime += realDt;
+
+            // Hitstop logic
+            if (hitstopTimer > 0) {
+                hitstopTimer -= realDt;
+                // Only update visual/juice elements during hitstop
+                timeScale = 0; 
+            } else {
+                // Smooth time scale interpolation
+                timeScale += (targetTimeScale - timeScale) * 10 * realDt;
+            }
+
+            let gameDt = realDt * timeScale; // Dilated time for physics
+
+            if (gameDt > 0) {
+                lumen.update(gameDt);
+                spawnEnemyLogic(gameDt);
+
+                // Update Enemies & Check Collisions
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    let e = enemies[i];
+                    e.update(gameDt);
+
+                    // 1. Check Collision with Lumen (Game Over)
+                    if (distSq(lumen, e) < (lumen.radius + e.radius) ** 2) {
+                        gameOver();
+                        return; // Stop updating
+                    }
+
+                    // 2. Check Collision with Tether (Slicing)
+                    if (anchor.active) {
+                        let dSq = distToSegmentSq(e, lumen, anchor);
+                        if (dSq < e.radius ** 2) {
+                            // Slice!
+                            playSound('slice');
+                            hitstopTimer = 0.05; // 50ms pause for impact
+                            screenShake = 10;
+                            combo++;
+                            
+                            let points = 100 * combo;
+                            score += points;
+                            scoreEl.innerText = score;
+                            
+                            // UI Juice
+                            multEl.innerText = `x${combo}`;
+                            multEl.classList.add('active');
+                            
+                            createParticles(e.x, e.y, COLORS.enemy, 20);
+                            floatingTexts.push(new FloatingText(e.x, e.y, `+${points}`, COLORS.cyan));
+                            
+                            enemies.splice(i, 1);
+                        }
+                    }
+                }
+            }
+
+            // Update purely visual elements in real time
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update(realDt);
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+            
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                floatingTexts[i].update(realDt);
+                if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+            }
+        }
+
+        function draw() {
+            // Fill background with low opacity for motion blur effect on enemies/world
+            ctx.fillStyle = 'rgba(10, 5, 18, 0.4)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Screen Shake apply
+            ctx.save();
+            if (screenShake > 0) {
+                let dx = (Math.random() - 0.5) * screenShake;
+                let dy = (Math.random() - 0.5) * screenShake;
+                ctx.translate(dx, dy);
+                screenShake *= 0.9; // decay
+                if (screenShake < 0.5) screenShake = 0;
+            }
+
+            if (STATE === 'PLAYING') {
+                // Draw Anchor & Tether
+                if (anchor.active) {
+                    // Anchor point
+                    ctx.beginPath();
+                    ctx.arc(anchor.x, anchor.y, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = COLORS.tether;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = COLORS.tether;
+                    ctx.fill();
+                    
+                    // Pulsing ring
+                    let pulseR = 6 + (Math.sin(Date.now() / 100) + 1) * 4;
+                    ctx.beginPath();
+                    ctx.arc(anchor.x, anchor.y, pulseR, 0, Math.PI * 2);
+                    ctx.strokeStyle = COLORS.tether;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Tether Line
+                    ctx.beginPath();
+                    ctx.moveTo(anchor.x, anchor.y);
+                    ctx.lineTo(lumen.x, lumen.y);
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    // Glow for line
+                    ctx.strokeStyle = COLORS.tether;
+                    ctx.lineWidth = 8;
+                    ctx.globalAlpha = 0.5;
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                    ctx.shadowBlur = 0;
+                }
+
+                // Draw Entities
+                lumen.draw();
+                enemies.forEach(e => e.draw());
+            }
+
+            // Draw Particles & Text
+            particles.forEach(p => p.draw());
+            floatingTexts.forEach(t => t.draw());
+
+            ctx.restore(); // Restore from screen shake
+            
+            // Draw vignette overlay for time dilation indication
+            if (timeScale < 0.9 && STATE === 'PLAYING') {
+                let intensity = (1 - timeScale) * 0.3; // Max 0.3 opacity
+                let grad = ctx.createRadialGradient(width/2, height/2, height/3, width/2, height/2, height);
+                grad.addColorStop(0, 'rgba(0,0,0,0)');
+                grad.addColorStop(1, `rgba(0, 255, 255, ${intensity})`);
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, width, height);
+            }
+        }
+
+        let lastTime = performance.now();
+        function loop(currentTime) {
+            let dt = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+            
+            if (dt > 0.1) dt = 0.1; // Cap dt to prevent massive jumps if tab is inactive
+
+            update(dt);
+            draw();
+            
+            requestAnimationFrame(loop);
+        }
+
+        // Start Loop
+        requestAnimationFrame(loop);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Arcade Lab — One Brief, Eight Models</title>
+<meta name="description" content="Eight frontier AI models, one identical brief: invent an original arcade game in a single self-contained HTML file. Play the results. / Tam model AI, mot de bai duy nhat.">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="AI Arcade Lab — One Brief, Eight Models">
+<meta property="og:description" content="Eight frontier AI models given one identical brief: invent an original arcade game from first principles.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='8'%20fill='%230a0b10'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='3.6'%20fill='%23ffd166'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='8.5'%20fill='none'%20stroke='%236fb3ff'%20stroke-width='1.6'%20opacity='.75'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='13'%20fill='none'%20stroke='%237ce0b0'%20stroke-width='1.1'%20opacity='.45'/%3E%3C/svg%3E">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+
+:root{
+  --bg:#07080c;
+  --surface:rgba(255,255,255,.035);
+  --surface-2:rgba(255,255,255,.06);
+  --line:rgba(255,255,255,.10);
+  --line-2:rgba(255,255,255,.17);
+  --text:#e9ebf2;
+  --dim:#a3aabd;
+  --muted:#6f7689;
+  --font-sans:"Segoe UI Variable Display","Segoe UI",-apple-system,BlinkMacSystemFont,Inter,system-ui,ui-sans-serif,Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"Cascadia Code","SF Mono","Segoe UI Mono","Roboto Mono",Menlo,Consolas,monospace;
+  --maxw:1240px;
+  --r:16px;
+  --ease:cubic-bezier(.22,.7,.24,1);
+}
+
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:var(--font-sans);font-size:16px;line-height:1.62;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+img,svg{max-width:100%}
+
+/* ---------- ambient light field ---------- */
+.field{position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none}
+.field::before,.field::after{content:"";position:absolute;border-radius:50%;filter:blur(90px);opacity:.5}
+.field::before{
+  width:min(78vw,860px);aspect-ratio:1;left:-16vw;top:-24vh;
+  background:radial-gradient(circle,rgba(92,132,255,.44),transparent 68%);
+  animation:drift1 36s var(--ease) infinite alternate;
+}
+.field::after{
+  width:min(72vw,790px);aspect-ratio:1;right:-14vw;top:24vh;
+  background:radial-gradient(circle,rgba(255,152,92,.24),transparent 68%);
+  animation:drift2 44s var(--ease) infinite alternate;
+}
+.grain{
+  position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.55;
+  background-image:radial-gradient(rgba(255,255,255,.055) .6px,transparent .6px),radial-gradient(rgba(255,255,255,.035) .5px,transparent .5px);
+  background-size:52px 52px,31px 31px;background-position:0 0,17px 23px;
+  -webkit-mask-image:radial-gradient(ellipse 130% 85% at 50% 0%,#000 18%,transparent 76%);
+  mask-image:radial-gradient(ellipse 130% 85% at 50% 0%,#000 18%,transparent 76%);
+}
+@keyframes drift1{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(12vw,14vh,0) scale(1.2)}}
+@keyframes drift2{from{transform:translate3d(0,0,0) scale(1.1)}to{transform:translate3d(-13vw,-11vh,0) scale(.92)}}
+
+/* ---------- layout ---------- */
+.wrap{width:100%;max-width:var(--maxw);margin-inline:auto;padding-inline:clamp(18px,5vw,44px)}
+.sec{padding:clamp(58px,9vw,104px) 0;position:relative}
+.rule{height:1px;background:linear-gradient(90deg,transparent,var(--line) 22%,var(--line) 78%,transparent);border:0;margin:0}
+
+/* ---------- bilingual switching ---------- */
+[data-lang="en"] .vi{display:none}
+[data-lang="vi"] .en{display:none}
+
+/* ---------- topbar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:60;
+  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);
+  background:linear-gradient(180deg,rgba(7,8,12,.94),rgba(7,8,12,.62));
+  border-bottom:1px solid var(--line);
+}
+.topbar .wrap{display:flex;align-items:center;gap:14px;min-height:60px;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px;font-size:14.5px;letter-spacing:-.015em;min-width:0}
+.brand svg{flex:none}
+.brand b{font-weight:680;white-space:nowrap}
+.brand i{font-style:normal;color:var(--muted);white-space:nowrap}
+@media (max-width:640px){.brand i{display:none}}
+
+.langswitch{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--surface);flex:none}
+.langswitch button{
+  appearance:none;border:0;cursor:pointer;background:transparent;color:var(--dim);
+  font-family:var(--font-mono);font-size:11.5px;letter-spacing:.09em;font-weight:600;
+  padding:6px 13px;border-radius:999px;transition:color .2s,background .25s;
+}
+.langswitch button[aria-pressed="true"]{background:var(--text);color:#0a0b10}
+.langswitch button:hover:not([aria-pressed="true"]){color:var(--text)}
+
+/* ---------- hero ---------- */
+.hero{padding:clamp(58px,11vw,116px) 0 clamp(40px,7vw,68px)}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:9px;
+  font-family:var(--font-mono);font-size:11.5px;letter-spacing:.17em;text-transform:uppercase;
+  color:var(--dim);border:1px solid var(--line);border-radius:999px;
+  padding:6px 15px 6px 11px;background:var(--surface);margin-bottom:26px;
+}
+.eyebrow .dot{width:6px;height:6px;border-radius:50%;background:#7ce0b0;box-shadow:0 0 10px #7ce0b0;animation:pulse 2.6s ease-in-out infinite;flex:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+h1{margin:0 0 22px;font-weight:700;font-size:clamp(2.45rem,7.2vw,5.05rem);line-height:1.03;letter-spacing:-.038em;max-width:17ch}
+h1 em{font-style:normal;background:linear-gradient(100deg,#ffd166,#ff9d8a 30%,#a78bff 60%,#6fb3ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{font-size:clamp(1.02rem,2.05vw,1.22rem);color:var(--dim);max-width:62ch;margin:0 0 34px;line-height:1.68}
+.lede strong{color:var(--text);font-weight:600}
+
+.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{
+  appearance:none;cursor:pointer;text-decoration:none;
+  display:inline-flex;align-items:center;gap:9px;
+  font-size:14.5px;font-weight:600;letter-spacing:-.005em;font-family:inherit;
+  padding:12px 21px;border-radius:11px;border:1px solid var(--line-2);
+  background:var(--surface);color:var(--text);
+  transition:transform .2s var(--ease),background .2s,border-color .2s;
+}
+.btn:hover{background:var(--surface-2);border-color:rgba(255,255,255,.32);transform:translateY(-2px)}
+.btn:active{transform:translateY(0)}
+.btn-primary{background:var(--text);color:#08090e;border-color:transparent;font-weight:650}
+.btn-primary:hover{background:#fff;border-color:transparent}
+
+/* ---------- stats ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:clamp(46px,7vw,70px)}
+.stat{background:#090a0f;padding:22px 20px}
+.stat b{display:block;font-size:clamp(1.6rem,4.2vw,2.25rem);font-weight:700;letter-spacing:-.03em;line-height:1.12;margin-bottom:4px}
+.stat span{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);line-height:1.5;display:block}
+
+/* ---------- section heads ---------- */
+.sec-head{margin-bottom:clamp(30px,5vw,48px);max-width:66ch}
+.sec-num{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.19em;color:var(--muted);display:block;margin-bottom:13px}
+h2{margin:0 0 14px;font-size:clamp(1.62rem,4.2vw,2.45rem);font-weight:680;letter-spacing:-.032em;line-height:1.15}
+.sec-head p{margin:0;color:var(--dim);font-size:clamp(.97rem,1.9vw,1.07rem);line-height:1.66}
+
+/* ---------- the brief ---------- */
+.brief{
+  border:1px solid var(--line);border-radius:var(--r);
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
+  overflow:hidden;
+}
+.brief-bar{
+  display:flex;align-items:center;gap:9px;padding:13px 20px;
+  border-bottom:1px solid var(--line);background:rgba(0,0,0,.28);
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);
+}
+.brief-bar .lights{display:flex;gap:5px;margin-right:5px}
+.brief-bar .lights i{width:9px;height:9px;border-radius:50%;background:var(--line-2);display:block}
+.brief-cols{display:grid;grid-template-columns:1fr 1fr}
+@media (max-width:840px){.brief-cols{grid-template-columns:1fr}}
+.brief-col{padding:clamp(22px,3.4vw,34px)}
+.brief-col+.brief-col{border-left:1px solid var(--line)}
+@media (max-width:840px){.brief-col+.brief-col{border-left:0;border-top:1px solid var(--line)}}
+.brief-lang{
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:18px;display:flex;align-items:center;gap:8px;
+}
+.brief-lang::after{content:"";flex:1;height:1px;background:var(--line)}
+.brief-col p{margin:0 0 16px;font-size:clamp(.95rem,1.85vw,1.03rem);line-height:1.74;color:#d6dae6}
+.brief-col p:last-child{margin-bottom:0}
+.brief-col p:first-of-type{color:var(--text);font-weight:520}
+.brief-col p:last-child{color:var(--dim);font-style:italic}
+
+/* ---------- filters ---------- */
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px;align-items:center}
+.chipbtn{
+  appearance:none;cursor:pointer;font-family:var(--font-mono);
+  font-size:11.5px;letter-spacing:.08em;font-weight:600;text-transform:uppercase;
+  padding:7px 14px;border-radius:999px;border:1px solid var(--line);
+  background:var(--surface);color:var(--dim);transition:all .22s var(--ease);
+}
+.chipbtn:hover{color:var(--text);border-color:var(--line-2)}
+.chipbtn[aria-pressed="true"]{background:var(--text);color:#0a0b10;border-color:transparent}
+.filters .count{font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.1em;margin-left:auto}
+
+/* ---------- game grid ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:clamp(14px,1.8vw,20px)}
+.card{
+  position:relative;border:1px solid var(--line);border-radius:var(--r);
+  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
+  overflow:hidden;transition:transform .32s var(--ease),border-color .32s,box-shadow .32s;
+  display:flex;flex-direction:column;
+}
+.card::before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .42s var(--ease);
+  background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 62%);
+}
+.card:hover,.card:focus-within{transform:translateY(-4px);border-color:color-mix(in srgb,var(--accent) 42%,var(--line));box-shadow:0 18px 44px -18px color-mix(in srgb,var(--accent) 40%,transparent)}
+.card:hover::before,.card:focus-within::before{opacity:1}
+.card.hide{display:none}
+
+.card-link{display:flex;flex-direction:column;height:100%;text-decoration:none;color:inherit;padding:20px;position:relative;z-index:1}
+.card-link:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:var(--r)}
+
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px}
+.motif{width:56px;height:56px;flex:none;color:var(--accent)}
+.motif *{vector-effect:non-scaling-stroke}
+.card:hover .motif .spin{animation:spin 7s linear infinite;transform-origin:32px 32px}
+.card:hover .motif .breathe{animation:breathe 2.4s ease-in-out infinite}
+.card:hover .motif .orbit{animation:orbit 3.4s linear infinite;transform-origin:32px 32px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes breathe{0%,100%{opacity:.28;transform:scale(.86);transform-origin:32px 32px}50%{opacity:1;transform:scale(1.1);transform-origin:32px 32px}}
+@keyframes orbit{to{transform:rotate(360deg)}}
+
+.chips{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.chip{
+  font-family:var(--font-mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:600;
+  padding:3.5px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;
+}
+.chip-axiom{color:#9fc4ff;border-color:rgba(159,196,255,.34);background:rgba(159,196,255,.09)}
+.chip-dogma{color:#8ce6bb;border-color:rgba(140,230,187,.34);background:rgba(140,230,187,.09)}
+.chip-none{color:#c9a4ff;border-color:rgba(201,164,255,.3);background:rgba(201,164,255,.08)}
+
+.gname{margin:0 0 5px;font-size:1.22rem;font-weight:680;letter-spacing:-.022em;line-height:1.2}
+.mname{
+  margin:0 0 13px;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;
+  color:color-mix(in srgb,var(--accent) 78%,#ffffff);
+}
+.gdesc{margin:0 0 20px;font-size:13.7px;line-height:1.6;color:var(--dim);flex:1}
+.play{
+  display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:650;
+  letter-spacing:.01em;color:var(--text);margin-top:auto;
+}
+.play svg{transition:transform .28s var(--ease)}
+.card:hover .play svg{transform:translate(3px,-3px)}
+
+/* ---------- methodology ---------- */
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(14px,1.8vw,20px)}
+@media (max-width:840px){.mgrid{grid-template-columns:1fr}}
+.mcard{
+  border:1px solid var(--line);border-radius:var(--r);padding:clamp(22px,3vw,30px);
+  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
+  position:relative;overflow:hidden;
+}
+.mcard::after{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--accent);opacity:.75}
+.mtag{
+  display:inline-block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:12px;font-weight:650;
+}
+.mcard h3{margin:0 0 11px;font-size:1.22rem;font-weight:660;letter-spacing:-.02em;line-height:1.28}
+.mcard p{margin:0 0 12px;color:var(--dim);font-size:14.4px;line-height:1.7}
+.mcard p:last-child{margin-bottom:0}
+.mcard strong{color:var(--text);font-weight:600}
+
+.note{
+  margin-top:clamp(14px,1.8vw,20px);border:1px solid var(--line);border-radius:var(--r);
+  padding:clamp(22px,3vw,30px);background:rgba(255,255,255,.022);
+  display:flex;gap:18px;align-items:flex-start;
+}
+.note svg{flex:none;color:#ffd166;margin-top:2px}
+.note h3{margin:0 0 9px;font-size:1.08rem;font-weight:660;letter-spacing:-.018em}
+.note p{margin:0;color:var(--dim);font-size:14.2px;line-height:1.7}
+.note strong{color:var(--text);font-weight:600}
+@media (max-width:560px){.note{flex-direction:column;gap:12px}}
+
+/* ---------- roster table ---------- */
+.tablewrap{border:1px solid var(--line);border-radius:var(--r);overflow-x:auto;background:rgba(255,255,255,.022)}
+table{border-collapse:collapse;width:100%;min-width:660px;font-size:13.6px}
+th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--line)}
+thead th{
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;background:rgba(0,0,0,.26);position:sticky;top:0;
+}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:rgba(255,255,255,.028)}
+td.mono{font-family:var(--font-mono);font-size:12px;color:var(--dim)}
+td b{font-weight:650}
+td a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line-2);padding-bottom:1px}
+td a:hover{border-bottom-color:currentColor}
+.tag{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.a{color:#9fc4ff;border-color:rgba(159,196,255,.32);background:rgba(159,196,255,.08)}
+.tag.d{color:#8ce6bb;border-color:rgba(140,230,187,.32);background:rgba(140,230,187,.08)}
+.tag.n{color:#c9a4ff;border-color:rgba(201,164,255,.28);background:rgba(201,164,255,.07)}
+
+/* ---------- footer ---------- */
+footer{border-top:1px solid var(--line);padding:clamp(38px,6vw,58px) 0 clamp(46px,7vw,70px);margin-top:clamp(30px,5vw,50px)}
+.foot{display:flex;flex-wrap:wrap;gap:22px;justify-content:space-between;align-items:flex-start}
+.foot p{margin:0;color:var(--muted);font-size:13.2px;line-height:1.72;max-width:56ch}
+.foot .sig{font-family:var(--font-mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+
+/* ---------- a11y / motion ---------- */
+:focus-visible{outline:2px solid #8fb4ff;outline-offset:3px;border-radius:6px}
+.skip{position:absolute;left:-9999px;top:0;background:var(--text);color:#08090e;padding:10px 16px;border-radius:0 0 10px 0;z-index:100;font-weight:650;font-size:14px}
+.skip:focus{left:0}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+<div class="field" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<a class="skip" href="#games"><span class="en">Skip to the games</span><span class="vi">Tới phần trò chơi</span></a>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <circle cx="16" cy="16" r="3.4" fill="#ffd166"/>
+        <circle cx="16" cy="16" r="8.4" stroke="#6fb3ff" stroke-width="1.5" opacity=".8"/>
+        <circle cx="16" cy="16" r="13" stroke="#7ce0b0" stroke-width="1.1" opacity=".45"/>
+      </svg>
+      <b>AI Arcade Lab</b>
+      <i class="en">One brief · Eight models</i>
+      <i class="vi">Một đề bài · Tám model</i>
+    </div>
+    <div class="langswitch" role="group" aria-label="Language / Ngôn ngữ">
+      <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-set-lang="vi" aria-pressed="false">VI</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span><span class="en">Live experiment · 8 entries</span><span class="vi">Thử nghiệm · 8 bài dự thi</span></span>
+
+    <h1 class="en">One identical brief.<br><em>Eight frontier models.</em></h1>
+    <h1 class="vi">Một đề bài giống hệt nhau.<br><em>Tám model hàng đầu.</em></h1>
+
+    <p class="lede en">This is a head-to-head test of the newest AI models. Each one received the <strong>exact same prompt</strong> — invent an addictive arcade game from first principles, no known genre, no familiar mechanic, all in a single self-contained HTML file. Nothing else was specified. Every game below is the model's own answer, unedited.</p>
+    <p class="lede vi">Đây là bài test đối đầu giữa các model AI mới nhất. Mỗi model nhận <strong>chính xác cùng một đề bài</strong> — sáng tạo một game arcade gây nghiện từ những nguyên lý đầu tiên, không dựa vào thể loại nào đã biết, không dùng cơ chế quen thuộc, tất cả gói trong một file HTML độc lập duy nhất. Không có yêu cầu nào khác. Mọi trò chơi bên dưới đều là câu trả lời của chính model đó, giữ nguyên không chỉnh sửa.</p>
+
+    <div class="cta">
+      <a class="btn btn-primary" href="#games">
+        <span class="en">Browse the games</span><span class="vi">Xem các trò chơi</span>
+      </a>
+      <a class="btn" href="#brief">
+        <span class="en">Read the brief</span><span class="vi">Đọc đề bài</span>
+      </a>
+      <button class="btn" type="button" id="randomBtn">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 4h3l6 8h3M2 12h3l6-8h3"/><path d="m12 2 2 2-2 2M12 10l2 2-2 2"/></svg>
+        <span class="en">Surprise me</span><span class="vi">Chơi ngẫu nhiên</span>
+      </button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b>8</b><span class="en">Models tested</span><span class="vi">Model tham gia</span></div>
+      <div class="stat"><b>1</b><span class="en">Shared prompt</span><span class="vi">Đề bài chung</span></div>
+      <div class="stat"><b>4</b><span class="en">Platforms</span><span class="vi">Nền tảng</span></div>
+      <div class="stat"><b>0</b><span class="en">Lines edited by hand</span><span class="vi">Dòng code sửa tay</span></div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============ THE BRIEF ============ -->
+<section class="sec" id="brief">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">01 — <span class="en">THE BRIEF</span><span class="vi">ĐỀ BÀI</span></span>
+      <h2 class="en">The prompt every model received</h2>
+      <h2 class="vi">Đề bài mà mọi model đều nhận được</h2>
+      <p class="en">Word for word, with no follow-up instructions, no examples and no corrections. Shown here in the original English alongside a Vietnamese translation.</p>
+      <p class="vi">Nguyên văn, không có hướng dẫn bổ sung, không ví dụ và không chỉnh sửa. Hiển thị bản tiếng Anh gốc song song với bản dịch tiếng Việt.</p>
+    </div>
+
+    <div class="brief">
+      <div class="brief-bar">
+        <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>prompt.txt — <span class="en">identical for all 8 models</span><span class="vi">giống nhau cho cả 8 model</span></span>
+      </div>
+      <div class="brief-cols">
+        <div class="brief-col">
+          <div class="brief-lang">English — original</div>
+          <p>Create an exceptionally polished, addictive casual arcade game in a single self-contained HTML file.</p>
+          <p>The core mechanic should be simple enough to understand instantly, but have enough depth to make the player want to keep improving their high score.</p>
+          <p>Prioritize genuine originality. Invent a fresh core mechanic or interaction that does not feel like a clone, remix, or obvious variation of an existing popular game. Surprise me with something that feels new.</p>
+          <p>Do not start from a known game genre or familiar mechanic. Invent the game from first principles.</p>
+          <p>You decide everything else.</p>
+        </div>
+        <div class="brief-col">
+          <div class="brief-lang">Tiếng Việt — bản dịch</div>
+          <p>Hãy tạo một game arcade casual cực kỳ trau chuốt và gây nghiện, gói trọn trong một file HTML độc lập duy nhất.</p>
+          <p>Cơ chế cốt lõi phải đủ đơn giản để hiểu được ngay lập tức, nhưng đủ chiều sâu để khiến người chơi luôn muốn cải thiện điểm số cao nhất của mình.</p>
+          <p>Ưu tiên tính nguyên bản thực sự. Hãy sáng tạo một cơ chế hoặc tương tác cốt lõi mới mẻ, không mang cảm giác là bản sao, bản phối lại, hay một biến thể hiển nhiên của một game phổ biến đã có. Hãy làm tôi bất ngờ bằng thứ gì đó thực sự mới.</p>
+          <p>Đừng bắt đầu từ một thể loại game đã biết hay một cơ chế quen thuộc. Hãy phát minh ra trò chơi từ những nguyên lý đầu tiên.</p>
+          <p>Mọi thứ còn lại do bạn quyết định.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============ GAMES ============ -->
+<section class="sec" id="games">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">02 — <span class="en">THE RESULTS</span><span class="vi">KẾT QUẢ</span></span>
+      <h2 class="en">Eight answers. Play them all.</h2>
+      <h2 class="vi">Tám câu trả lời. Chơi thử tất cả.</h2>
+      <p class="en">Every game opens in a new tab and runs on both desktop and mobile. Each file is fully self-contained — no network, no assets, no dependencies. Filter by the system the model was run under.</p>
+      <p class="vi">Mỗi trò chơi mở ra trong một tab mới và chạy được trên cả máy tính lẫn điện thoại. Mỗi file hoàn toàn độc lập — không cần mạng, không tài nguyên ngoài, không phụ thuộc. Bạn có thể lọc theo hệ thống mà model đã chạy.</p>
+    </div>
+
+    <div class="filters" role="group" aria-label="Filter games">
+      <button class="chipbtn" type="button" data-filter="all" aria-pressed="true"><span class="en">All</span><span class="vi">Tất cả</span></button>
+      <button class="chipbtn" type="button" data-filter="axiom" aria-pressed="false">Axiom</button>
+      <button class="chipbtn" type="button" data-filter="dogma" aria-pressed="false">Dogma</button>
+      <button class="chipbtn" type="button" data-filter="none" aria-pressed="false"><span class="en">No system</span><span class="vi">Không hệ thống</span></button>
+      <span class="count" id="count"></span>
+    </div>
+
+    <div class="grid" id="grid">
+
+      <!-- UMBRA -->
+      <article class="card" data-harness="axiom" style="--accent:#f0a860">
+        <a class="card-link" href="games/fable-5-1-max-axiom.html" target="_blank" rel="noopener">
+          <div class="card-top">
+            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <circle cx="22" cy="22" r="7" class="breathe" fill="currentColor" fill-opacity=".22"/>
+              <path d="M27.5 26.5 52 51M16.5 27.5 41 52M27.5 26.5 41 52" stroke-opacity=".5"/>
+              <path d="M16.5 27.5 41 52" stroke-opacity=".5"/>
+              <circle cx="22" cy="22" r="13" stroke-opacity=".28" stroke-dasharray="2 5"/>
+            </svg>
+            <div class="chips"><span class="chip chip-axiom">Axiom</span><span class="chip">Claude Code</span></div>
+          </div>
+          <h3 class="gname">UMBRA</h3>
+          <p class="mname">Fable 5.1 Max (Axiom)</p>
+          <p class="gdesc en">A game of light and shade. Move to cast a shadow — keep the cold in the dark, keep the warm in the light. The nearer the sun, the wider the shadow.</p>
+          <p class="gdesc vi">Một trò chơi của ánh sáng và bóng tối. Di chuyển để đổ bóng — giữ cái lạnh trong bóng tối, giữ cái ấm trong ánh sáng. Càng gần mặt trời, bóng càng rộng.</p>
+          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
+        </a>
+      </article>
+
+      <!-- THRUM -->
+      <article class="card" data-harness="axiom" style="--accent:#4fd1c5">
+        <a class="card-link" href="games/opus-5-max-axiom.html" target="_blank" rel="noopener">
+          <div class="card-top">
+            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <circle cx="32" cy="32" r="4" fill="currentColor"/>
+              <circle cx="32" cy="32" r="11" stroke-opacity=".7" class="breathe"/>
+              <circle cx="32" cy="32" r="18" stroke-opacity=".42"/>
+              <circle cx="32" cy="32" r="25" stroke-opacity=".2"/>
+            </svg>
+            <div class="chips"><span class="chip chip-axiom">Axiom</span><span class="chip">Claude Code</span></div>
+          </div>
+          <h3 class="gname">THRUM</h3>
+          <p class="mname">Opus 5 Max (Axiom)</p>
+          <p class="gdesc en">An arcade game about wave propagation and rhythm. Click anywhere to release a wave — each click is priced by the consequence it leaves behind, not by what it hits.</p>
+          <p class="gdesc vi">Một game arcade về sự lan truyền của sóng và nhịp điệu. Nhấn vào bất cứ đâu để phát ra một con sóng — mỗi cú nhấn được định giá bởi hệ quả nó để lại, chứ không phải bởi thứ nó chạm tới.</p>
+          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
+        </a>
+      </article>
+
+      <!-- AXISONANCE -->
+      <article class="card" data-harness="axiom" style="--accent:#ffd166">
+        <a class="card-link" href="games/sol-5-6-max-axiom.html" target="_blank" rel="noopener">
+          <div class="card-top">
+            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <g class="spin">
+                <path d="M10 32h44" stroke-opacity=".45" stroke-dasharray="3 4"/>
+                <circle cx="21" cy="32" r="6.5" fill="currentColor" fill-opacity=".85" stroke="none"/>
+                <circle cx="43" cy="32" r="6.5" stroke-opacity=".85"/>
+              </g>
+              <circle cx="32" cy="32" r="2.4" fill="currentColor"/>
+            </svg>
+            <div class="chips"><span class="chip chip-axiom">Axiom</span><span class="chip">Codex</span></div>
+          </div>
+          <h3 class="gname">AXISONANCE</h3>
+          <p class="mname">Sol 5.6 Max (Axiom)</p>
+          <p class="gdesc en">One gesture, one axis. Move to rotate the crease until a solid light sits inside its hollow twin, then mirror everything. Match several at once to form a chord.</p>
+          <p class="gdesc vi">Một cử chỉ, một trục. Di chuyển để xoay nếp gấp cho tới khi ánh sáng đặc nằm gọn trong bản sao rỗng của nó, rồi phản chiếu tất cả. Ghép nhiều cặp cùng lúc để tạo thành một hợp âm.</p>
+          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
+        </a>
+      </article>
+
+      <!-- RIFT -->
+      <article class="card" data-harness="axiom" style="--accent:#6fb3ff">
+        <a class="card-link" href="games/astra-max-axiom.html" target="_blank" rel="noopener">
+          <div class="card-top">
+            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path d="M14 46 50 18" stroke-opacity=".35" stroke-dasharray="3 4"/>
+              <path d="M18 20 46 44" class="breathe" stroke-width="2"/>
+              <circle cx="15" cy="47" r="5.5" fill="currentColor" fill-opacity=".8" stroke="none"/>
+              <circle cx="49" cy="17" r="5.5" fill="currentColor" fill-opacity=".8" stroke="none"/>
+            </svg>
+            <div class="chips"><span class="chip chip-axiom">Axiom</span><span class="chip">Codex</span></div>
+          </div>
+          <h3 class="gname">RIFT</h3>
+          <p class="mname">Astra Max (Axiom)</p>
+          <p class="gdesc en">A small experiment in folding space. Draw a seam between a pair of twin lights and release to bring them together — cut roughly at a right angle to the line that joins them.</p>
+          <p class="gdesc vi">Một thử nghiệm nhỏ về việc gấp không gian. Vẽ một đường nối giữa cặp ánh sáng song sinh rồi thả ra để đưa chúng lại gần nhau — cắt gần vuông góc với đường nối chúng.</p>
+          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
+        </a>
+      </article>
+
+      <!-- FOLDLIGHT -->
+      <article class="card" data-harness="dogma" style="--accent:#7ce0b0">
+        <a class="card-link" href="games/astra-max-dogma.html" target="_blank" rel="noopener">
+          <div class="card-top">
+            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path d="M32 12v40" stroke-opacity=".4" stroke-dasharray="3 4"/>
+              <path d="M18 24 32 32 18 40" stroke-opacity=".75"/>
+              <path d="M46 24 32 32 46 40" stroke-opacity=".75"/>
+              <circle cx="32" cy="32" r="5" class="breathe" fill="currentColor" fill-opacity=".5"/>
+            </svg>
+            <div class="chips"><span class="chip chip-dogma">Dogma</span><span class="chip">Codex</span></div>
+          </div>
+          <h3 class="gname">FOLDLIGHT</h3>
+          <p class="mname">Astra Max (Dogma)</p>
+          <p class="gdesc en">Fold the space between drifting lights. Drag a crease between them and release to bring them together — arrow keys move the crease, Q and E rotate it.</p>
+          <p class="gdesc vi">Gấp lại khoảng không giữa những ánh sáng đang trôi. Kéo một nếp gấp giữa chúng rồi thả ra để hợp chúng lại — phím mũi tên di chuyển nếp gấp, Q và E xoay nó.</p>
+          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
+        </a>
+      </article>
+
+      <!-- AFTERLIGHT -->
+      <article class="card" data-harness="none" style="--accent:#ff9d8a">
+        <a class="card-link" href="games/gpt-6-pro.html" target="_blank" rel="noopener">
+          <div class="card-top">
+            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <circle cx="44" cy="32" r="5" fill="currentColor" stroke="none"/>
+              <circle cx="32" cy="32" r="7" stroke-opacity=".6" class="breathe"/>
+              <circle cx="21" cy="32" r="8.5" stroke-opacity=".34"/>
+              <circle cx="11" cy="32" r="10" stroke-opacity=".16"/>
+            </svg>
+            <div class="chips"><span class="chip chip-none"><span class="en">No system</span><span class="vi">Không hệ thống</span></span><span class="chip">ChatGPT</span></div>
+          </div>
+          <h3 class="gname">AFTERLIGHT</h3>
+          <p class="mname">GPT 6 Pro</p>
+          <p class="gdesc en">A one-button arcade experiment. Hold to leave echoes trailing behind you, and release at the exact moment another light enters one of them.</p>
+          <p class="gdesc vi">Một thử nghiệm arcade chỉ với một nút bấm. Giữ để để lại những tiếng vọng phía sau, và thả ra đúng khoảnh khắc một ánh sáng khác đi vào một trong số đó.</p>
+          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
+        </a>
+      </article>
+
+      <!-- CHRONO TETHER -->
+      <article class="card" data-harness="none" style="--accent:#ff4fd8">
+        <a class="card-link" href="games/gemini-3-1-pro.html" target="_blank" rel="noopener">
+          <div class="card-top">
+            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <circle cx="32" cy="32" r="3" fill="currentColor" stroke="none"/>
+              <circle cx="32" cy="32" r="17" stroke-opacity=".3" stroke-dasharray="3 5"/>
+              <g class="orbit"><path d="M32 32 32 15" stroke-opacity=".7"/><circle cx="32" cy="15" r="5" fill="currentColor" fill-opacity=".85" stroke="none"/></g>
+            </svg>
+            <div class="chips"><span class="chip chip-none"><span class="en">No system</span><span class="vi">Không hệ thống</span></span><span class="chip">Gemini</span></div>
+          </div>
+          <h3 class="gname">Chrono Tether</h3>
+          <p class="mname">Gemini 3.1 Pro</p>
+          <p class="gdesc en">Hold to drop an anchor and your Lumen swings into orbit around it. Release to fly free and trigger time dilation, then slice the enemies with your tether line.</p>
+          <p class="gdesc vi">Giữ để thả một mỏ neo, Lumen của bạn sẽ bay vào quỹ đạo quanh nó. Thả ra để phóng đi và kích hoạt giãn nở thời gian, rồi chém kẻ địch bằng sợi dây neo.</p>
+          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
+        </a>
+      </article>
+
+      <!-- SINGULARIS -->
+      <article class="card" data-harness="none" style="--accent:#7c8cff">
+        <a class="card-link" href="games/gemini-3-8-flash.html" target="_blank" rel="noopener">
+          <div class="card-top">
+            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <circle cx="32" cy="32" r="5.5" fill="currentColor" fill-opacity=".85" stroke="none" class="breathe"/>
+              <g class="spin" stroke-opacity=".6">
+                <path d="M32 14a18 18 0 0 1 15.6 9"/>
+                <path d="M32 50a18 18 0 0 1-15.6-9"/>
+              </g>
+              <circle cx="32" cy="32" r="23" stroke-opacity=".18" stroke-dasharray="2 6"/>
+            </svg>
+            <div class="chips"><span class="chip chip-none"><span class="en">No system</span><span class="vi">Không hệ thống</span></span><span class="chip">Gemini</span></div>
+          </div>
+          <h3 class="gname">SINGULARIS</h3>
+          <p class="mname">Gemini 3.8 Flash</p>
+          <p class="gdesc en">Glide your Radiant Core through the void. Hold to open a gravitational well that spins shards into orbit, then release a supernova to fling them out as projectiles.</p>
+          <p class="gdesc vi">Lướt Radiant Core của bạn xuyên qua khoảng không. Giữ để mở một giếng hấp dẫn cuốn các mảnh vỡ vào quỹ đạo, rồi thả ra một vụ nổ siêu tân tinh để bắn chúng đi.</p>
+          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
+        </a>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============ METHOD ============ -->
+<section class="sec" id="method">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">03 — <span class="en">THE SETUP</span><span class="vi">CÁCH THIẾT LẬP</span></span>
+      <h2 class="en">Axiom and Dogma are not the same thing</h2>
+      <h2 class="vi">Axiom và Dogma là hai khái niệm khác nhau</h2>
+      <p class="en">Some models ran inside one of two systems the author built. They sit at opposite ends of the same question: how much should you constrain a model that is being asked to be original?</p>
+      <p class="vi">Một số model chạy bên trong một trong hai hệ thống do tác giả xây dựng. Chúng nằm ở hai đầu đối lập của cùng một câu hỏi: nên ràng buộc đến mức nào một model đang được yêu cầu phải sáng tạo?</p>
+    </div>
+
+    <div class="mgrid">
+      <div class="mcard" style="--accent:#9fc4ff">
+        <span class="mtag">Axiom</span>
+        <h3 class="en">A strict discipline system</h3>
+        <h3 class="vi">Một hệ thống kỷ luật chặt chẽ</h3>
+        <p class="en">Axiom is a <strong>plugin the author built</strong> and uses for every one of their tasks. It runs through a fixed sequence of steps that the author laid down, and through which the AI delegates the work out to agents.</p>
+        <p class="vi">Axiom là một <strong>plugin do tác giả tạo ra</strong> và sử dụng dành riêng cho mọi task của mình, chạy theo một hệ thống các bước mà tác giả đặt ra để AI giao việc cho các agents thực hiện.</p>
+        <p class="en">Four entries here ran under Axiom: <strong>Fable 5.1 Max</strong>, <strong>Opus 5 Max</strong>, <strong>Sol 5.6 Max</strong> and <strong>Astra Max</strong>.</p>
+        <p class="vi">Bốn bài ở đây chạy dưới Axiom: <strong>Fable 5.1 Max</strong>, <strong>Opus 5 Max</strong>, <strong>Sol 5.6 Max</strong> và <strong>Astra Max</strong>.</p>
+      </div>
+
+      <div class="mcard" style="--accent:#8ce6bb">
+        <span class="mtag">Dogma</span>
+        <h3 class="en">A philosophy, not a procedure</h3>
+        <h3 class="vi">Một triết lý, không phải một quy trình</h3>
+        <p class="en">Dogma is a <strong>skill the author created recently</strong>, built on six short core philosophies. Here the author hands the decision-making over to the AI entirely.</p>
+        <p class="vi">Dogma là một <strong>skill mà tác giả mới tạo ra</strong> với 6 triết lý cơ bản ngắn gọn, và tác giả giao hoàn toàn quyền quyết định cho AI.</p>
+        <p class="en">Axiom and Dogma are two different concepts — <strong>one is a tightly structured system, the other is a philosophy that gives the AI full authority to decide.</strong> One entry ran under Dogma: <strong>Astra Max (Dogma)</strong>.</p>
+        <p class="vi">Axiom và Dogma là 2 khái niệm khác nhau — <strong>một bên là hệ thống chặt chẽ, một bên là triết lý để AI toàn quyền quyết định.</strong> Một bài chạy dưới Dogma: <strong>Astra Max (Dogma)</strong>.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3.6"/></svg>
+      <div>
+        <h3 class="en">A natural three-way experiment</h3>
+        <h3 class="vi">Một thí nghiệm ba chiều tự nhiên</h3>
+        <p class="en">One model appears three times under three different conditions. <strong>Astra</strong> ran on Codex under Axiom (RIFT), on Codex under Dogma (FOLDLIGHT), and as <strong>GPT 6 Pro</strong> on ChatGPT (AFTERLIGHT) — a tier available only on Pro accounts, with a very small weekly quota and a different way of reasoning from Astra on Codex. Playing those three back to back is the closest thing here to a controlled comparison of the environment rather than the model.</p>
+        <p class="vi">Một model xuất hiện ba lần trong ba điều kiện khác nhau. <strong>Astra</strong> chạy trên Codex dưới Axiom (RIFT), trên Codex dưới Dogma (FOLDLIGHT), và với tư cách <strong>GPT 6 Pro</strong> trên ChatGPT (AFTERLIGHT) — bản chỉ có trên các account Pro, với hạn mức sử dụng rất ít hàng tuần và có cách reasoning khác với Astra trên Codex. Chơi liền ba bài này là cách gần nhất ở đây để so sánh có kiểm soát về môi trường chạy, thay vì về bản thân model.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============ ROSTER ============ -->
+<section class="sec" id="roster">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-num">04 — <span class="en">THE ROSTER</span><span class="vi">DANH SÁCH</span></span>
+      <h2 class="en">Who ran what, and where</h2>
+      <h2 class="vi">Model nào chạy ở đâu</h2>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th><span class="en">Entry</span><span class="vi">Bài dự thi</span></th>
+            <th><span class="en">Game</span><span class="vi">Trò chơi</span></th>
+            <th><span class="en">Platform</span><span class="vi">Nền tảng</span></th>
+            <th><span class="en">Effort</span><span class="vi">Effort</span></th>
+            <th><span class="en">System</span><span class="vi">Hệ thống</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><b>Fable 5.1 Max</b></td><td><a href="games/fable-5-1-max-axiom.html" target="_blank" rel="noopener">UMBRA</a></td><td class="mono">Claude Code</td><td class="mono">Max</td><td><span class="tag a">Axiom</span></td></tr>
+          <tr><td><b>Opus 5 Max</b></td><td><a href="games/opus-5-max-axiom.html" target="_blank" rel="noopener">THRUM</a></td><td class="mono">Claude Code</td><td class="mono">Max</td><td><span class="tag a">Axiom</span></td></tr>
+          <tr><td><b>Sol 5.6 Max</b></td><td><a href="games/sol-5-6-max-axiom.html" target="_blank" rel="noopener">AXISONANCE</a></td><td class="mono">Codex</td><td class="mono">Max</td><td><span class="tag a">Axiom</span></td></tr>
+          <tr><td><b>Astra Max</b></td><td><a href="games/astra-max-axiom.html" target="_blank" rel="noopener">RIFT</a></td><td class="mono">Codex</td><td class="mono">Max</td><td><span class="tag a">Axiom</span></td></tr>
+          <tr><td><b>Astra Max</b></td><td><a href="games/astra-max-dogma.html" target="_blank" rel="noopener">FOLDLIGHT</a></td><td class="mono">Codex</td><td class="mono">Max</td><td><span class="tag d">Dogma</span></td></tr>
+          <tr><td><b>GPT 6 Pro</b></td><td><a href="games/gpt-6-pro.html" target="_blank" rel="noopener">AFTERLIGHT</a></td><td class="mono">ChatGPT (Pro)</td><td class="mono">—</td><td><span class="tag n"><span class="en">None</span><span class="vi">Không</span></span></td></tr>
+          <tr><td><b>Gemini 3.1 Pro</b></td><td><a href="games/gemini-3-1-pro.html" target="_blank" rel="noopener">Chrono Tether</a></td><td class="mono">Gemini</td><td class="mono">—</td><td><span class="tag n"><span class="en">None</span><span class="vi">Không</span></span></td></tr>
+          <tr><td><b>Gemini 3.8 Flash</b></td><td><a href="games/gemini-3-8-flash.html" target="_blank" rel="noopener">SINGULARIS</a></td><td class="mono">Gemini</td><td class="mono">—</td><td><span class="tag n"><span class="en">None</span><span class="vi">Không</span></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div>
+      <p class="en">Every game file is published exactly as the model produced it — not a single line was edited, reformatted or fixed by hand. What you play is what the model wrote.</p>
+      <p class="vi">Mọi file game đều được đăng đúng như model đã tạo ra — không một dòng nào được sửa, định dạng lại hay chỉnh tay. Những gì bạn chơi chính là những gì model đã viết.</p>
+    </div>
+    <div class="sig">
+      <span class="en">AI Arcade Lab · one brief, eight answers</span>
+      <span class="vi">AI Arcade Lab · một đề bài, tám câu trả lời</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var root = document.documentElement;
+
+  /* ---------- language ---------- */
+  function setLang(l){
+    if(l!=="vi") l="en";
+    root.setAttribute("data-lang", l);
+    root.setAttribute("lang", l);
+    var b = document.querySelectorAll("[data-set-lang]");
+    for(var i=0;i<b.length;i++){
+      b[i].setAttribute("aria-pressed", b[i].getAttribute("data-set-lang")===l ? "true" : "false");
+    }
+    try{ localStorage.setItem("lab-lang", l); }catch(e){}
+    updateCount();
+  }
+  document.addEventListener("click", function(e){
+    var t = e.target.closest ? e.target.closest("[data-set-lang]") : null;
+    if(t) setLang(t.getAttribute("data-set-lang"));
+  });
+  var saved = null;
+  try{ saved = localStorage.getItem("lab-lang"); }catch(e){}
+  if(!saved && (navigator.language||"").toLowerCase().indexOf("vi")===0) saved = "vi";
+  if(saved) setLang(saved);
+
+  /* ---------- filters ---------- */
+  var cards = Array.prototype.slice.call(document.querySelectorAll(".card"));
+  var countEl = document.getElementById("count");
+  var current = "all";
+
+  function updateCount(){
+    if(!countEl) return;
+    var n = cards.filter(function(c){ return !c.classList.contains("hide"); }).length;
+    var vi = root.getAttribute("data-lang")==="vi";
+    countEl.textContent = vi ? ("Hiển thị " + n + "/" + cards.length) : ("Showing " + n + " of " + cards.length);
+  }
+
+  function applyFilter(f){
+    current = f;
+    cards.forEach(function(c){
+      var show = (f==="all") || (c.getAttribute("data-harness")===f);
+      c.classList.toggle("hide", !show);
+    });
+    var btns = document.querySelectorAll("[data-filter]");
+    for(var i=0;i<btns.length;i++){
+      btns[i].setAttribute("aria-pressed", btns[i].getAttribute("data-filter")===f ? "true" : "false");
+    }
+    updateCount();
+  }
+  document.addEventListener("click", function(e){
+    var t = e.target.closest ? e.target.closest("[data-filter]") : null;
+    if(t) applyFilter(t.getAttribute("data-filter"));
+  });
+  updateCount();
+
+  /* ---------- surprise me ---------- */
+  var rnd = document.getElementById("randomBtn");
+  if(rnd){
+    rnd.addEventListener("click", function(){
+      var pool = cards.filter(function(c){ return !c.classList.contains("hide"); });
+      if(!pool.length) pool = cards;
+      var pick = pool[Math.floor(Math.random()*pool.length)];
+      var link = pick.querySelector("a.card-link");
+      if(link) window.open(link.getAttribute("href"), "_blank", "noopener");
+    });
+  }
+})();
+</script>
+</body>
+</html>

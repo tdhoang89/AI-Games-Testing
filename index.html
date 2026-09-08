@@ -1,681 +1,726 @@
 <!DOCTYPE html>
-<html lang="en" data-lang="en">
+<html lang="en" data-lang="both" data-revealed="false">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AI Arcade Lab — One Brief, Eight Models</title>
-<meta name="description" content="Eight frontier AI models, one identical brief: invent an original arcade game in a single self-contained HTML file. Play the results. / Tam model AI, mot de bai duy nhat.">
+<title>AI Arcade Lab — One Brief, Nine Games</title>
+<meta name="description" content="Nine runs, seven frontier AI models, one identical brief: invent an original arcade game in a single self-contained HTML file. Guess who made what, then play. / Chin luot chay, bay model AI, mot de bai duy nhat.">
 <meta name="color-scheme" content="dark">
-<meta property="og:title" content="AI Arcade Lab — One Brief, Eight Models">
-<meta property="og:description" content="Eight frontier AI models given one identical brief: invent an original arcade game from first principles.">
+<meta property="og:title" content="AI Arcade Lab — One Brief, Nine Games">
+<meta property="og:description" content="Nine runs across seven frontier AI models, one identical brief: invent an original arcade game from first principles.">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='8'%20fill='%230a0b10'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='3.6'%20fill='%23ffd166'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='8.5'%20fill='none'%20stroke='%236fb3ff'%20stroke-width='1.6'%20opacity='.75'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='13'%20fill='none'%20stroke='%237ce0b0'%20stroke-width='1.1'%20opacity='.45'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20fill='%2306070b'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='4' fill='%23ffb45c'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='10'%20fill='none'%20stroke='%238fe3ff'%20stroke-width='1.4'%20opacity='.6'/%3E%3C/svg%3E">
 <style>
 *,*::before,*::after{box-sizing:border-box}
 
 :root{
-  --bg:#07080c;
-  --surface:rgba(255,255,255,.035);
-  --surface-2:rgba(255,255,255,.06);
-  --line:rgba(255,255,255,.10);
-  --line-2:rgba(255,255,255,.17);
-  --text:#e9ebf2;
-  --dim:#a3aabd;
-  --muted:#6f7689;
-  --font-sans:"Segoe UI Variable Display","Segoe UI",-apple-system,BlinkMacSystemFont,Inter,system-ui,ui-sans-serif,Roboto,Helvetica,Arial,sans-serif;
-  --font-mono:ui-monospace,"Cascadia Code","SF Mono","Segoe UI Mono","Roboto Mono",Menlo,Consolas,monospace;
-  --maxw:1240px;
-  --r:16px;
-  --ease:cubic-bezier(.22,.7,.24,1);
+  --sans:"Segoe UI Variable Display","Segoe UI",-apple-system,BlinkMacSystemFont,"SF Pro Text",Roboto,system-ui,sans-serif;
+  --mono:"Cascadia Code","SF Mono",Menlo,Consolas,"Roboto Mono",ui-monospace,monospace;
+  /* Vietnamese-safe serif stack. Georgia is deliberately excluded: it lacks
+     precomposed Vietnamese glyphs, so tone marks detach ("gio^´ng"). */
+  --serif:Cambria,Constantia,Charter,"Palatino Linotype",Palatino,"Noto Serif","Times New Roman",serif;
+  --bg:#06070b;
+  --panel:#0a0c12;
+  --ink:#e8eaf2;
+  --ink2:#c7cddc;
+  --ink3:#aeb6c6;
+  --ink4:#98a1b3;
+  --line:rgba(255,255,255,.09);
+  --line2:rgba(255,255,255,.16);
+  --amber:#ffb45c;
+  --ice:#8fe3ff;
+  --mint:#b9ffe3;
+  --ok:#78f7a6;
+  --no:#ff5f7e;
+  --wrap:1220px;
 }
 
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-body{
-  margin:0;background:var(--bg);color:var(--text);
-  font-family:var(--font-sans);font-size:16px;line-height:1.62;
-  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
-  overflow-x:hidden;
-}
-img,svg{max-width:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--ice);text-decoration:none}
+a:hover{color:var(--mint)}
+button,select{font-family:inherit}
+::selection{background:var(--amber);color:var(--bg)}
+svg{display:block}
 
-/* ---------- ambient light field ---------- */
-.field{position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none}
-.field::before,.field::after{content:"";position:absolute;border-radius:50%;filter:blur(90px);opacity:.5}
-.field::before{
-  width:min(78vw,860px);aspect-ratio:1;left:-16vw;top:-24vh;
-  background:radial-gradient(circle,rgba(92,132,255,.44),transparent 68%);
-  animation:drift1 36s var(--ease) infinite alternate;
-}
-.field::after{
-  width:min(72vw,790px);aspect-ratio:1;right:-14vw;top:24vh;
-  background:radial-gradient(circle,rgba(255,152,92,.24),transparent 68%);
-  animation:drift2 44s var(--ease) infinite alternate;
-}
-.grain{
-  position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.55;
-  background-image:radial-gradient(rgba(255,255,255,.055) .6px,transparent .6px),radial-gradient(rgba(255,255,255,.035) .5px,transparent .5px);
-  background-size:52px 52px,31px 31px;background-position:0 0,17px 23px;
-  -webkit-mask-image:radial-gradient(ellipse 130% 85% at 50% 0%,#000 18%,transparent 76%);
-  mask-image:radial-gradient(ellipse 130% 85% at 50% 0%,#000 18%,transparent 76%);
-}
-@keyframes drift1{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(12vw,14vh,0) scale(1.2)}}
-@keyframes drift2{from{transform:translate3d(0,0,0) scale(1.1)}to{transform:translate3d(-13vw,-11vh,0) scale(.92)}}
+@keyframes aalSpin{to{transform:rotate(360deg)}}
+@keyframes aalPulse{0%{transform:scale(.25);opacity:.85}80%{opacity:.12}100%{transform:scale(1.5);opacity:0}}
+@keyframes aalBlink{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes aalSoft{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes aalDrift{0%,100%{transform:translate(0,0)}50%{transform:translate(8px,-6px)}}
+@keyframes aalDash{to{stroke-dashoffset:-56}}
 
-/* ---------- layout ---------- */
-.wrap{width:100%;max-width:var(--maxw);margin-inline:auto;padding-inline:clamp(18px,5vw,44px)}
-.sec{padding:clamp(58px,9vw,104px) 0;position:relative}
-.rule{height:1px;background:linear-gradient(90deg,transparent,var(--line) 22%,var(--line) 78%,transparent);border:0;margin:0}
-
-/* ---------- bilingual switching ---------- */
+/* ---------- bilingual ---------- */
 [data-lang="en"] .vi{display:none}
 [data-lang="vi"] .en{display:none}
+.sep{display:none}
+[data-lang="both"] .sep{display:inline}
+.vi{font-family:var(--serif)}
 
-/* ---------- topbar ---------- */
-.topbar{
-  position:sticky;top:0;z-index:60;
-  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);
-  background:linear-gradient(180deg,rgba(7,8,12,.94),rgba(7,8,12,.62));
-  border-bottom:1px solid var(--line);
-}
-.topbar .wrap{display:flex;align-items:center;gap:14px;min-height:60px;justify-content:space-between}
-.brand{display:flex;align-items:center;gap:10px;font-size:14.5px;letter-spacing:-.015em;min-width:0}
-.brand svg{flex:none}
-.brand b{font-weight:680;white-space:nowrap}
-.brand i{font-style:normal;color:var(--muted);white-space:nowrap}
-@media (max-width:640px){.brand i{display:none}}
+/* ---------- reveal state ---------- */
+[data-revealed="false"] .r-on{display:none}
+[data-revealed="true"] .r-off{display:none}
 
-.langswitch{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--surface);flex:none}
-.langswitch button{
-  appearance:none;border:0;cursor:pointer;background:transparent;color:var(--dim);
-  font-family:var(--font-mono);font-size:11.5px;letter-spacing:.09em;font-weight:600;
-  padding:6px 13px;border-radius:999px;transition:color .2s,background .25s;
-}
-.langswitch button[aria-pressed="true"]{background:var(--text);color:#0a0b10}
-.langswitch button:hover:not([aria-pressed="true"]){color:var(--text)}
+/* ---------- shell ---------- */
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 20px}
+.sec{max-width:var(--wrap);margin:0 auto;padding:24px 20px 72px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--ink4)}
+.hr{border-top:1px solid var(--line);padding-top:18px}
 
-/* ---------- hero ---------- */
-.hero{padding:clamp(58px,11vw,116px) 0 clamp(40px,7vw,68px)}
-.eyebrow{
-  display:inline-flex;align-items:center;gap:9px;
-  font-family:var(--font-mono);font-size:11.5px;letter-spacing:.17em;text-transform:uppercase;
-  color:var(--dim);border:1px solid var(--line);border-radius:999px;
-  padding:6px 15px 6px 11px;background:var(--surface);margin-bottom:26px;
-}
-.eyebrow .dot{width:6px;height:6px;border-radius:50%;background:#7ce0b0;box-shadow:0 0 10px #7ce0b0;animation:pulse 2.6s ease-in-out infinite;flex:none}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{margin:0;font-size:clamp(34px,5.6vw,60px);line-height:1.05;letter-spacing:-.015em;font-weight:750}
+h2{margin:18px 0 0;font-size:clamp(24px,3.4vw,36px);line-height:1.15;letter-spacing:-.01em;font-weight:700}
+.sub{margin:8px 0 0;font-family:var(--serif);font-style:italic;font-size:clamp(17px,2.4vw,22px);line-height:1.4;color:var(--ink2)}
+h1+.sub{margin-top:14px;font-size:clamp(19px,3vw,27px)}
+/* Vietnamese-only: the Vietnamese line is promoted to be the heading itself */
+[data-lang="vi"] .sub{margin-top:0;font-style:normal;font-weight:700;letter-spacing:-.01em;line-height:1.18;font-size:clamp(24px,3.4vw,36px);color:var(--ink)}
+[data-lang="vi"] h1+.sub{font-weight:750;letter-spacing:-.015em;line-height:1.1;font-size:clamp(32px,5.2vw,56px)}
+.body-en{max-width:70ch;margin:16px 0 0;font-size:14.5px;line-height:1.6;color:var(--ink3)}
+.body-vi{max-width:70ch;margin:10px 0 0;font-size:14.5px;line-height:1.65;color:var(--ink3)}
 
-h1{margin:0 0 22px;font-weight:700;font-size:clamp(2.45rem,7.2vw,5.05rem);line-height:1.03;letter-spacing:-.038em;max-width:17ch}
-h1 em{font-style:normal;background:linear-gradient(100deg,#ffd166,#ff9d8a 30%,#a78bff 60%,#6fb3ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-.lede{font-size:clamp(1.02rem,2.05vw,1.22rem);color:var(--dim);max-width:62ch;margin:0 0 34px;line-height:1.68}
-.lede strong{color:var(--text);font-weight:600}
+/* ---------- masthead ---------- */
+header.top{border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40;background:rgba(6,7,11,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+header.top .in{max-width:var(--wrap);margin:0 auto;padding:16px 20px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.mark{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.3em;color:var(--ink)}
+.mark i{font-style:normal;color:var(--amber);text-shadow:0 0 10px rgba(255,180,92,.9)}
+.markline{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--ink4)}
+.brandwrap{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;min-width:0}
 
-.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-.btn{
-  appearance:none;cursor:pointer;text-decoration:none;
-  display:inline-flex;align-items:center;gap:9px;
-  font-size:14.5px;font-weight:600;letter-spacing:-.005em;font-family:inherit;
-  padding:12px 21px;border-radius:11px;border:1px solid var(--line-2);
-  background:var(--surface);color:var(--text);
-  transition:transform .2s var(--ease),background .2s,border-color .2s;
-}
-.btn:hover{background:var(--surface-2);border-color:rgba(255,255,255,.32);transform:translateY(-2px)}
-.btn:active{transform:translateY(0)}
-.btn-primary{background:var(--text);color:#08090e;border-color:transparent;font-weight:650}
-.btn-primary:hover{background:#fff;border-color:transparent}
+.chip{cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.12em;padding:8px 12px;border-radius:2px;background:transparent;border:1px solid var(--line2);color:var(--ink4);transition:border-color .2s,color .2s,background .2s}
+.chip:hover{border-color:rgba(255,255,255,.34);color:var(--ink2)}
+.chip[aria-pressed="true"]{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.5);color:var(--ink)}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 
-/* ---------- stats ---------- */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:clamp(46px,7vw,70px)}
-.stat{background:#090a0f;padding:22px 20px}
-.stat b{display:block;font-size:clamp(1.6rem,4.2vw,2.25rem);font-weight:700;letter-spacing:-.03em;line-height:1.12;margin-bottom:4px}
-.stat span{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);line-height:1.5;display:block}
+/* ---------- opening ---------- */
+.open{max-width:var(--wrap);margin:0 auto;padding:60px 20px 36px}
+.btnrow{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.btn{cursor:pointer;display:inline-block;background:transparent;border:1px solid var(--line2);color:var(--ink2);font-family:var(--mono);font-size:12px;letter-spacing:.12em;padding:13px 18px;border-radius:2px;transition:border-color .2s,color .2s,box-shadow .2s}
+.btn:hover{border-color:rgba(255,255,255,.45);color:var(--ink)}
+.btn-a{border-color:rgba(255,180,92,.55);color:var(--amber)}
+.btn-a:hover{box-shadow:0 0 18px rgba(255,180,92,.35);border-color:rgba(255,180,92,.8);color:var(--amber)}
+.btn-solid{background:var(--amber);color:var(--bg);border-color:var(--amber);font-weight:700}
+.btn-solid:hover{box-shadow:0 0 22px rgba(255,180,92,.5);color:var(--bg)}
 
-/* ---------- section heads ---------- */
-.sec-head{margin-bottom:clamp(30px,5vw,48px);max-width:66ch}
-.sec-num{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.19em;color:var(--muted);display:block;margin-bottom:13px}
-h2{margin:0 0 14px;font-size:clamp(1.62rem,4.2vw,2.45rem);font-weight:680;letter-spacing:-.032em;line-height:1.15}
-.sec-head p{margin:0;color:var(--dim);font-size:clamp(.97rem,1.9vw,1.07rem);line-height:1.66}
+/* ---------- games ---------- */
+.gridbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:18px;margin-bottom:22px}
+.count{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--ink4)}
+.grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))}
 
-/* ---------- the brief ---------- */
-.brief{
-  border:1px solid var(--line);border-radius:var(--r);
-  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
-  overflow:hidden;
-}
-.brief-bar{
-  display:flex;align-items:center;gap:9px;padding:13px 20px;
-  border-bottom:1px solid var(--line);background:rgba(0,0,0,.28);
-  font-family:var(--font-mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);
-}
-.brief-bar .lights{display:flex;gap:5px;margin-right:5px}
-.brief-bar .lights i{width:9px;height:9px;border-radius:50%;background:var(--line-2);display:block}
-.brief-cols{display:grid;grid-template-columns:1fr 1fr}
-@media (max-width:840px){.brief-cols{grid-template-columns:1fr}}
-.brief-col{padding:clamp(22px,3.4vw,34px)}
-.brief-col+.brief-col{border-left:1px solid var(--line)}
-@media (max-width:840px){.brief-col+.brief-col{border-left:0;border-top:1px solid var(--line)}}
-.brief-lang{
-  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:18px;display:flex;align-items:center;gap:8px;
-}
-.brief-lang::after{content:"";flex:1;height:1px;background:var(--line)}
-.brief-col p{margin:0 0 16px;font-size:clamp(.95rem,1.85vw,1.03rem);line-height:1.74;color:#d6dae6}
-.brief-col p:last-child{margin-bottom:0}
-.brief-col p:first-of-type{color:var(--text);font-weight:520}
-.brief-col p:last-child{color:var(--dim);font-style:italic}
-
-/* ---------- filters ---------- */
-.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px;align-items:center}
-.chipbtn{
-  appearance:none;cursor:pointer;font-family:var(--font-mono);
-  font-size:11.5px;letter-spacing:.08em;font-weight:600;text-transform:uppercase;
-  padding:7px 14px;border-radius:999px;border:1px solid var(--line);
-  background:var(--surface);color:var(--dim);transition:all .22s var(--ease);
-}
-.chipbtn:hover{color:var(--text);border-color:var(--line-2)}
-.chipbtn[aria-pressed="true"]{background:var(--text);color:#0a0b10;border-color:transparent}
-.filters .count{font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.1em;margin-left:auto}
-
-/* ---------- game grid ---------- */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:clamp(14px,1.8vw,20px)}
-.card{
-  position:relative;border:1px solid var(--line);border-radius:var(--r);
-  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
-  overflow:hidden;transition:transform .32s var(--ease),border-color .32s,box-shadow .32s;
-  display:flex;flex-direction:column;
-}
-.card::before{
-  content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .42s var(--ease);
-  background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 62%);
-}
-.card:hover,.card:focus-within{transform:translateY(-4px);border-color:color-mix(in srgb,var(--accent) 42%,var(--line));box-shadow:0 18px 44px -18px color-mix(in srgb,var(--accent) 40%,transparent)}
-.card:hover::before,.card:focus-within::before{opacity:1}
+.card{background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:3px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .2s,box-shadow .2s,transform .2s}
+.card:hover{border-color:rgba(255,255,255,.24);transform:translateY(-2px);box-shadow:0 0 28px var(--glow,rgba(255,255,255,.12))}
 .card.hide{display:none}
+.poster{display:block;position:relative;aspect-ratio:16/10;overflow:hidden}
+.poster:focus-visible{outline:2px solid var(--ice);outline-offset:-2px}
+.poster svg{position:absolute;inset:0;width:100%;height:100%}
+.pnum{position:absolute;top:10px;left:12px;font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:rgba(232,234,242,.8)}
+.pplay{position:absolute;right:12px;bottom:10px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:rgba(232,234,242,.65)}
+.cbody{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.chead{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.chead h3{margin:0;font-size:17px;letter-spacing:.06em;font-weight:650;color:var(--ink)}
+.dots{display:flex;gap:5px;flex:none}
+.dots i{width:8px;height:8px;border-radius:50%;display:block}
+.cdesc{margin:0;font-size:13.5px;line-height:1.5;color:var(--ink3)}
+.cdesc.vi{line-height:1.55}
+.cfoot{margin-top:auto;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;min-height:26px;flex-wrap:wrap;gap:8px}
+.guesslink{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--ink4)}
+.guesslink:hover{color:var(--ice)}
+.mline{font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--ink2)}
+.cmodel{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.badge{font-family:var(--mono);font-size:10px;letter-spacing:.16em;padding:3px 8px;border-radius:2px;white-space:nowrap}
+.b-axiom{color:var(--amber);border:1px solid rgba(255,180,92,.5)}
+.b-dogma{color:var(--ice);border:1px dashed rgba(143,227,255,.55)}
+.b-none{color:var(--ink4);border:1px dotted rgba(255,255,255,.24)}
 
-.card-link{display:flex;flex-direction:column;height:100%;text-decoration:none;color:inherit;padding:20px;position:relative;z-index:1}
-.card-link:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:var(--r)}
+/* ---------- brief ---------- */
+.two{display:grid;gap:28px;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));margin-top:30px}
+.col{border-top:2px solid rgba(232,234,242,.35);padding-top:16px}
+.collab{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--ink4);margin-bottom:14px}
+.col p{margin:0 0 14px;font-size:15px;line-height:1.62;color:var(--ink2)}
+.col.vicol p{font-family:var(--serif);line-height:1.65}
+.col p:last-child{margin-bottom:0;color:var(--ink);font-weight:600}
 
-.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px}
-.motif{width:56px;height:56px;flex:none;color:var(--accent)}
-.motif *{vector-effect:non-scaling-stroke}
-.card:hover .motif .spin{animation:spin 7s linear infinite;transform-origin:32px 32px}
-.card:hover .motif .breathe{animation:breathe 2.4s ease-in-out infinite}
-.card:hover .motif .orbit{animation:orbit 3.4s linear infinite;transform-origin:32px 32px}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes breathe{0%,100%{opacity:.28;transform:scale(.86);transform-origin:32px 32px}50%{opacity:1;transform:scale(1.1);transform-origin:32px 32px}}
-@keyframes orbit{to{transform:rotate(360deg)}}
+/* ---------- setup ---------- */
+.panels{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));margin-top:28px}
+.panel{padding:22px;border-radius:3px}
+.p-axiom{border:1px solid rgba(255,180,92,.4);background:rgba(255,180,92,.04)}
+.p-dogma{border:1px dashed rgba(143,227,255,.45)}
+.plab{font-family:var(--mono);font-size:13px;letter-spacing:.24em}
+.p-axiom .plab{color:var(--amber)}
+.p-dogma .plab{color:var(--ice)}
+.psub{margin-top:6px;font-size:13px;line-height:1.5;color:var(--ink2)}
+.panel p{margin:14px 0 0;font-size:14px;line-height:1.6;color:var(--ink3)}
+.panel p.vi{margin-top:10px;line-height:1.65}
+.pmeta{margin-top:16px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;line-height:1.8;color:var(--ink4)}
+.pull{max-width:62ch;margin:44px auto 0;text-align:center}
+.pull p{margin:0;font-family:var(--serif);font-style:italic;font-size:clamp(18px,2.6vw,24px);line-height:1.5;color:var(--ink)}
+.pull p+p{margin-top:14px}
 
-.chips{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
-.chip{
-  font-family:var(--font-mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:600;
-  padding:3.5px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;
-}
-.chip-axiom{color:#9fc4ff;border-color:rgba(159,196,255,.34);background:rgba(159,196,255,.09)}
-.chip-dogma{color:#8ce6bb;border-color:rgba(140,230,187,.34);background:rgba(140,230,187,.09)}
-.chip-none{color:#c9a4ff;border-color:rgba(201,164,255,.3);background:rgba(201,164,255,.08)}
+/* ---------- pairs ---------- */
+.pairs{display:grid;gap:16px;margin-top:22px}
+.pair{border:1px solid var(--line);border-radius:3px;padding:20px}
+.pairhead{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--ink4);margin-bottom:14px}
+.pairgrid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));align-items:stretch}
+.pcard{display:block;border:1px solid var(--line2);padding:16px;border-radius:3px;color:var(--ink);transition:box-shadow .2s,border-color .2s}
+.pcard:hover{color:var(--ink);border-color:rgba(255,255,255,.4);box-shadow:0 0 20px var(--glow,rgba(255,255,255,.1))}
+.pcard .cond{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--ink4)}
+.pcard .nm{margin-top:8px;font-size:16px;font-weight:650;letter-spacing:.04em}
+.pcard .go{margin-top:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em}
+.vs{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--ink4)}
+@media (max-width:640px){.vs{padding:2px 0}}
 
-.gname{margin:0 0 5px;font-size:1.22rem;font-weight:680;letter-spacing:-.022em;line-height:1.2}
-.mname{
-  margin:0 0 13px;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;
-  color:color-mix(in srgb,var(--accent) 78%,#ffffff);
-}
-.gdesc{margin:0 0 20px;font-size:13.7px;line-height:1.6;color:var(--dim);flex:1}
-.play{
-  display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:650;
-  letter-spacing:.01em;color:var(--text);margin-top:auto;
-}
-.play svg{transition:transform .28s var(--ease)}
-.card:hover .play svg{transform:translate(3px,-3px)}
+/* ---------- reveal / guess ---------- */
+.guessbox{border:1px solid var(--line2);background:var(--panel);padding:clamp(18px,4vw,34px);border-radius:3px}
+.grow{padding:12px 0;border-top:1px solid rgba(255,255,255,.07);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.gname{font-family:var(--mono);font-size:12px;letter-spacing:.08em;min-width:170px;color:var(--ink)}
+.grow select{flex:1;min-width:200px;background:var(--bg);color:var(--ink);border:1px solid rgba(255,255,255,.2);padding:12px;font-family:var(--mono);font-size:12px;border-radius:2px}
+.grow select:disabled{opacity:.75}
+.gmark{font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--ink4)}
+.gmark.ok{color:var(--ok)}
+.gmark.no{color:var(--no)}
+.gmark.miss{color:var(--ink2)}
+.gactions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:22px;border-top:1px solid rgba(255,255,255,.07);padding-top:20px}
+.score{font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--ink2)}
 
-/* ---------- methodology ---------- */
-.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(14px,1.8vw,20px)}
-@media (max-width:840px){.mgrid{grid-template-columns:1fr}}
-.mcard{
-  border:1px solid var(--line);border-radius:var(--r);padding:clamp(22px,3vw,30px);
-  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
-  position:relative;overflow:hidden;
-}
-.mcard::after{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--accent);opacity:.75}
-.mtag{
-  display:inline-block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--accent);margin-bottom:12px;font-weight:650;
-}
-.mcard h3{margin:0 0 11px;font-size:1.22rem;font-weight:660;letter-spacing:-.02em;line-height:1.28}
-.mcard p{margin:0 0 12px;color:var(--dim);font-size:14.4px;line-height:1.7}
-.mcard p:last-child{margin-bottom:0}
-.mcard strong{color:var(--text);font-weight:600}
-
-.note{
-  margin-top:clamp(14px,1.8vw,20px);border:1px solid var(--line);border-radius:var(--r);
-  padding:clamp(22px,3vw,30px);background:rgba(255,255,255,.022);
-  display:flex;gap:18px;align-items:flex-start;
-}
-.note svg{flex:none;color:#ffd166;margin-top:2px}
-.note h3{margin:0 0 9px;font-size:1.08rem;font-weight:660;letter-spacing:-.018em}
-.note p{margin:0;color:var(--dim);font-size:14.2px;line-height:1.7}
-.note strong{color:var(--text);font-weight:600}
-@media (max-width:560px){.note{flex-direction:column;gap:12px}}
-
-/* ---------- roster table ---------- */
-.tablewrap{border:1px solid var(--line);border-radius:var(--r);overflow-x:auto;background:rgba(255,255,255,.022)}
-table{border-collapse:collapse;width:100%;min-width:660px;font-size:13.6px}
-th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--line)}
-thead th{
-  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--muted);font-weight:600;background:rgba(0,0,0,.26);position:sticky;top:0;
-}
-tbody tr:last-child td{border-bottom:0}
-tbody tr:hover{background:rgba(255,255,255,.028)}
-td.mono{font-family:var(--font-mono);font-size:12px;color:var(--dim)}
-td b{font-weight:650}
-td a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line-2);padding-bottom:1px}
-td a:hover{border-bottom-color:currentColor}
-.tag{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
-.tag.a{color:#9fc4ff;border-color:rgba(159,196,255,.32);background:rgba(159,196,255,.08)}
-.tag.d{color:#8ce6bb;border-color:rgba(140,230,187,.32);background:rgba(140,230,187,.08)}
-.tag.n{color:#c9a4ff;border-color:rgba(201,164,255,.28);background:rgba(201,164,255,.07)}
+/* ---------- roster ---------- */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;min-width:640px}
+th{text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.2);color:var(--ink4);letter-spacing:.16em;font-weight:400;font-size:10.5px}
+td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.07);color:var(--ink4)}
+td.a{color:var(--ink2)}
+td.b{color:var(--ink)}
+.rnote{margin:14px 0 0;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--ink4)}
 
 /* ---------- footer ---------- */
-footer{border-top:1px solid var(--line);padding:clamp(38px,6vw,58px) 0 clamp(46px,7vw,70px);margin-top:clamp(30px,5vw,50px)}
-.foot{display:flex;flex-wrap:wrap;gap:22px;justify-content:space-between;align-items:flex-start}
-.foot p{margin:0;color:var(--muted);font-size:13.2px;line-height:1.72;max-width:56ch}
-.foot .sig{font-family:var(--font-mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+footer{border-top:1px solid var(--line)}
+footer .in{max-width:var(--wrap);margin:0 auto;padding:44px 20px 56px}
+footer p{max-width:70ch;margin:0;font-size:14.5px;line-height:1.6;color:var(--ink3)}
+footer p.vi{margin-top:10px;line-height:1.65}
+.footmark{margin-top:28px;font-family:var(--mono);font-size:10.5px;letter-spacing:.3em;color:var(--ink4)}
 
-/* ---------- a11y / motion ---------- */
-:focus-visible{outline:2px solid #8fb4ff;outline-offset:3px;border-radius:6px}
-.skip{position:absolute;left:-9999px;top:0;background:var(--text);color:#08090e;padding:10px 16px;border-radius:0 0 10px 0;z-index:100;font-weight:650;font-size:14px}
-.skip:focus{left:0}
+/* ---------- touch targets ---------- */
+@media (pointer:coarse),(max-width:640px){
+  .chip{padding:12px 15px;min-height:44px}
+  .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+  .grow select{min-height:44px}
+  .guesslink,.pcard .go{padding:4px 0;display:inline-block}
+}
+
+/* ---------- a11y ---------- */
+.skip{position:absolute;left:-9999px;top:0;font-family:var(--mono);font-size:12px;letter-spacing:.1em;background:var(--panel);border:1px solid rgba(255,255,255,.3);padding:12px 16px;color:var(--ink);z-index:60}
+.skip:focus{left:16px;top:16px}
+:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
-  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  *{animation:none!important;transition:none!important}
 }
 </style>
+<noscript><style>
+  .r-on{display:block!important}
+  .r-off,#guess,#langchips{display:none!important}
+</style></noscript>
 </head>
 <body>
-<div class="field" aria-hidden="true"></div>
-<div class="grain" aria-hidden="true"></div>
 
-<a class="skip" href="#games"><span class="en">Skip to the games</span><span class="vi">Tới phần trò chơi</span></a>
+<a class="skip" href="#games">Skip to the games · Tới phần trò chơi</a>
 
-<header class="topbar">
-  <div class="wrap">
-    <div class="brand">
-      <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <circle cx="16" cy="16" r="3.4" fill="#ffd166"/>
-        <circle cx="16" cy="16" r="8.4" stroke="#6fb3ff" stroke-width="1.5" opacity=".8"/>
-        <circle cx="16" cy="16" r="13" stroke="#7ce0b0" stroke-width="1.1" opacity=".45"/>
-      </svg>
-      <b>AI Arcade Lab</b>
-      <i class="en">One brief · Eight models</i>
-      <i class="vi">Một đề bài · Tám model</i>
+<header class="top">
+  <div class="in">
+    <div class="brandwrap">
+      <div class="mark">AI ARCADE LAB<i> ▪</i></div>
+      <div class="markline"><span class="en">ONE BRIEF · NINE RUNS</span><span class="sep"> — </span><span class="vi">MỘT ĐỀ BÀI · CHÍN LƯỢT CHẠY</span></div>
     </div>
-    <div class="langswitch" role="group" aria-label="Language / Ngôn ngữ">
-      <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
-      <button type="button" data-set-lang="vi" aria-pressed="false">VI</button>
+    <div class="chiprow" id="langchips" role="group" aria-label="Language · Ngôn ngữ">
+      <button type="button" class="chip" data-lang-set="en" aria-pressed="false">EN</button>
+      <button type="button" class="chip" data-lang-set="both" aria-pressed="true">EN+VI</button>
+      <button type="button" class="chip" data-lang-set="vi" aria-pressed="false">VI</button>
     </div>
   </div>
 </header>
 
 <main>
 
-<!-- ============ HERO ============ -->
-<section class="hero">
-  <div class="wrap">
-    <span class="eyebrow"><span class="dot"></span><span class="en">Live experiment · 8 entries</span><span class="vi">Thử nghiệm · 8 bài dự thi</span></span>
-
-    <h1 class="en">One identical brief.<br><em>Eight frontier models.</em></h1>
-    <h1 class="vi">Một đề bài giống hệt nhau.<br><em>Tám model hàng đầu.</em></h1>
-
-    <p class="lede en">This is a head-to-head test of the newest AI models. Each one received the <strong>exact same prompt</strong> — invent an addictive arcade game from first principles, no known genre, no familiar mechanic, all in a single self-contained HTML file. Nothing else was specified. Every game below is the model's own answer, unedited.</p>
-    <p class="lede vi">Đây là bài test đối đầu giữa các model AI mới nhất. Mỗi model nhận <strong>chính xác cùng một đề bài</strong> — sáng tạo một game arcade gây nghiện từ những nguyên lý đầu tiên, không dựa vào thể loại nào đã biết, không dùng cơ chế quen thuộc, tất cả gói trong một file HTML độc lập duy nhất. Không có yêu cầu nào khác. Mọi trò chơi bên dưới đều là câu trả lời của chính model đó, giữ nguyên không chỉnh sửa.</p>
-
-    <div class="cta">
-      <a class="btn btn-primary" href="#games">
-        <span class="en">Browse the games</span><span class="vi">Xem các trò chơi</span>
-      </a>
-      <a class="btn" href="#brief">
-        <span class="en">Read the brief</span><span class="vi">Đọc đề bài</span>
-      </a>
-      <button class="btn" type="button" id="randomBtn">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 4h3l6 8h3M2 12h3l6-8h3"/><path d="m12 2 2 2-2 2M12 10l2 2-2 2"/></svg>
-        <span class="en">Surprise me</span><span class="vi">Chơi ngẫu nhiên</span>
-      </button>
-    </div>
-
-    <div class="stats">
-      <div class="stat"><b>8</b><span class="en">Models tested</span><span class="vi">Model tham gia</span></div>
-      <div class="stat"><b>1</b><span class="en">Shared prompt</span><span class="vi">Đề bài chung</span></div>
-      <div class="stat"><b>4</b><span class="en">Platforms</span><span class="vi">Nền tảng</span></div>
-      <div class="stat"><b>0</b><span class="en">Lines edited by hand</span><span class="vi">Dòng code sửa tay</span></div>
-    </div>
+<!-- ================= OPENING ================= -->
+<section class="open">
+  <h1 class="en">One identical brief.<br>Nine independent runs.</h1>
+  <p class="sub vi">Một đề bài giống hệt nhau. Chín lượt chạy độc lập.</p>
+  <p class="body-en en">This is a head-to-head test of the newest AI models. Nine runs across seven models, each given the exact same prompt — invent an addictive arcade game from first principles, no known genre, no familiar mechanic, all in a single self-contained HTML file. Nothing else was specified. Every game below is the model's own answer, unedited.</p>
+  <p class="body-vi vi">Đây là bài test đối đầu giữa các model AI mới nhất. Chín lượt chạy trên bảy model, mỗi lượt nhận chính xác cùng một đề bài — sáng tạo một game arcade gây nghiện từ những nguyên lý đầu tiên, không dựa vào thể loại nào đã biết, không dùng cơ chế quen thuộc, tất cả gói trong một file HTML độc lập duy nhất. Không có yêu cầu nào khác. Mọi trò chơi bên dưới đều là câu trả lời của chính model đó, giữ nguyên không chỉnh sửa.</p>
+  <div class="btnrow">
+    <button type="button" class="btn btn-a" id="surprise"><span class="en">Surprise me</span><span class="sep"> · </span><span class="vi">Chơi ngẫu nhiên</span> ⟶</button>
+    <a class="btn" href="#brief"><span class="en">Read the brief</span><span class="sep"> · </span><span class="vi">Đọc đề bài</span> ↓</a>
   </div>
 </section>
 
-<hr class="rule">
-
-<!-- ============ THE BRIEF ============ -->
-<section class="sec" id="brief">
-  <div class="wrap">
-    <div class="sec-head">
-      <span class="sec-num">01 — <span class="en">THE BRIEF</span><span class="vi">ĐỀ BÀI</span></span>
-      <h2 class="en">The prompt every model received</h2>
-      <h2 class="vi">Đề bài mà mọi model đều nhận được</h2>
-      <p class="en">Word for word, with no follow-up instructions, no examples and no corrections. Shown here in the original English alongside a Vietnamese translation.</p>
-      <p class="vi">Nguyên văn, không có hướng dẫn bổ sung, không ví dụ và không chỉnh sửa. Hiển thị bản tiếng Anh gốc song song với bản dịch tiếng Việt.</p>
-    </div>
-
-    <div class="brief">
-      <div class="brief-bar">
-        <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span>prompt.txt — <span class="en">identical for all 8 models</span><span class="vi">giống nhau cho cả 8 model</span></span>
-      </div>
-      <div class="brief-cols">
-        <div class="brief-col">
-          <div class="brief-lang">English — original</div>
-          <p>Create an exceptionally polished, addictive casual arcade game in a single self-contained HTML file.</p>
-          <p>The core mechanic should be simple enough to understand instantly, but have enough depth to make the player want to keep improving their high score.</p>
-          <p>Prioritize genuine originality. Invent a fresh core mechanic or interaction that does not feel like a clone, remix, or obvious variation of an existing popular game. Surprise me with something that feels new.</p>
-          <p>Do not start from a known game genre or familiar mechanic. Invent the game from first principles.</p>
-          <p>You decide everything else.</p>
-        </div>
-        <div class="brief-col">
-          <div class="brief-lang">Tiếng Việt — bản dịch</div>
-          <p>Hãy tạo một game arcade casual cực kỳ trau chuốt và gây nghiện, gói trọn trong một file HTML độc lập duy nhất.</p>
-          <p>Cơ chế cốt lõi phải đủ đơn giản để hiểu được ngay lập tức, nhưng đủ chiều sâu để khiến người chơi luôn muốn cải thiện điểm số cao nhất của mình.</p>
-          <p>Ưu tiên tính nguyên bản thực sự. Hãy sáng tạo một cơ chế hoặc tương tác cốt lõi mới mẻ, không mang cảm giác là bản sao, bản phối lại, hay một biến thể hiển nhiên của một game phổ biến đã có. Hãy làm tôi bất ngờ bằng thứ gì đó thực sự mới.</p>
-          <p>Đừng bắt đầu từ một thể loại game đã biết hay một cơ chế quen thuộc. Hãy phát minh ra trò chơi từ những nguyên lý đầu tiên.</p>
-          <p>Mọi thứ còn lại do bạn quyết định.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<hr class="rule">
-
-<!-- ============ GAMES ============ -->
+<!-- ================= GAMES ================= -->
 <section class="sec" id="games">
-  <div class="wrap">
-    <div class="sec-head">
-      <span class="sec-num">02 — <span class="en">THE RESULTS</span><span class="vi">KẾT QUẢ</span></span>
-      <h2 class="en">Eight answers. Play them all.</h2>
-      <h2 class="vi">Tám câu trả lời. Chơi thử tất cả.</h2>
-      <p class="en">Every game opens in a new tab and runs on both desktop and mobile. Each file is fully self-contained — no network, no assets, no dependencies. Filter by the system the model was run under.</p>
-      <p class="vi">Mỗi trò chơi mở ra trong một tab mới và chạy được trên cả máy tính lẫn điện thoại. Mỗi file hoàn toàn độc lập — không cần mạng, không tài nguyên ngoài, không phụ thuộc. Bạn có thể lọc theo hệ thống mà model đã chạy.</p>
+  <div class="gridbar">
+    <div class="eyebrow"><span class="en">01–09 — THE GAMES</span><span class="sep"> · </span><span class="vi">CÁC TRÒ CHƠI</span></div>
+    <div class="chiprow">
+      <div class="r-on chiprow" id="filters" role="group" aria-label="Filter by system">
+        <button type="button" class="chip" data-filter="all" aria-pressed="true"><span class="en">All</span><span class="sep"> · </span><span class="vi">Tất cả</span></button>
+        <button type="button" class="chip" data-filter="axiom" aria-pressed="false">Axiom</button>
+        <button type="button" class="chip" data-filter="dogma" aria-pressed="false">Dogma</button>
+        <button type="button" class="chip" data-filter="none" aria-pressed="false"><span class="en">No system</span><span class="sep"> · </span><span class="vi">Không hệ thống</span></button>
+        <span class="count" id="count" aria-live="polite"></span>
+      </div>
+      <a class="r-off count" href="#guess" style="color:var(--ice)"><span class="en">Who made what? Guess below</span><span class="sep"> · </span><span class="vi">Ai làm game nào? Đoán ở dưới</span> ↓</a>
     </div>
+  </div>
 
-    <div class="filters" role="group" aria-label="Filter games">
-      <button class="chipbtn" type="button" data-filter="all" aria-pressed="true"><span class="en">All</span><span class="vi">Tất cả</span></button>
-      <button class="chipbtn" type="button" data-filter="axiom" aria-pressed="false">Axiom</button>
-      <button class="chipbtn" type="button" data-filter="dogma" aria-pressed="false">Dogma</button>
-      <button class="chipbtn" type="button" data-filter="none" aria-pressed="false"><span class="en">No system</span><span class="vi">Không hệ thống</span></button>
-      <span class="count" id="count"></span>
+  <div class="grid" id="grid">
+
+    <!-- 01 UMBRA -->
+    <article class="card" data-sys="axiom" style="--glow:rgba(255,180,92,.15)">
+      <a class="poster" href="games/01-umbra.html" target="_blank" rel="noopener" aria-label="Play UMBRA">
+        <svg viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect width="400" height="250" fill="#070b1e"/>
+          <circle cx="306" cy="54" r="30" fill="none" stroke="rgba(255,180,92,.22)" stroke-width="1"/>
+          <circle cx="306" cy="54" r="17" fill="#ffb45c" style="filter:drop-shadow(0 0 14px rgba(255,180,92,.9));animation:aalSoft 5s ease-in-out infinite"/>
+          <polygon points="142,148 158,172 -8,320 -58,246" fill="#01020a" opacity=".8"/>
+          <circle cx="150" cy="160" r="15" fill="#e6ecfa" style="filter:drop-shadow(0 0 8px rgba(230,236,250,.5))"/>
+          <circle cx="80" cy="70" r="2.5" fill="#ffd58a" style="filter:drop-shadow(0 0 5px #ffd58a);animation:aalDrift 7s ease-in-out infinite;transform-box:fill-box;transform-origin:center"/>
+          <circle cx="240" cy="200" r="2.5" fill="#8fe3ff" style="filter:drop-shadow(0 0 5px #8fe3ff);animation:aalDrift 9s ease-in-out 1s infinite;transform-box:fill-box;transform-origin:center"/>
+          <circle cx="330" cy="170" r="2" fill="#ffd58a" style="animation:aalBlink 4s ease-in-out .5s infinite"/>
+          <circle cx="60" cy="210" r="2" fill="#8fe3ff" style="animation:aalBlink 5s ease-in-out 1.2s infinite"/>
+        </svg>
+        <span class="pnum">01</span>
+        <span class="pplay">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></span>
+      </a>
+      <div class="cbody">
+        <div class="chead"><h3>UMBRA</h3><span class="dots" aria-hidden="true"><i style="background:#ffb45c;box-shadow:0 0 6px #ffb45c"></i><i style="background:#ffd58a;box-shadow:0 0 6px #ffd58a"></i><i style="background:#8fe3ff;box-shadow:0 0 6px #8fe3ff"></i></span></div>
+        <p class="cdesc en">A game of light and shade. Move to cast a shadow — keep the cold in the dark, keep the warm in the light. The nearer the sun, the wider the shadow.</p>
+        <p class="cdesc vi">Một trò chơi của ánh sáng và bóng tối. Di chuyển để đổ bóng — giữ cái lạnh trong bóng tối, giữ cái ấm trong ánh sáng. Càng gần mặt trời, bóng càng rộng.</p>
+        <div class="cfoot">
+          <a class="guesslink r-off" href="#guess">MODEL ▒▒▒▒▒▒ — <span class="en">take a guess</span><span class="sep"> · </span><span class="vi">đoán thử</span></a>
+          <div class="cmodel r-on"><span class="mline">Fable 5.1 Max — Claude Code · Max</span><span class="badge b-axiom">■ AXIOM</span></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 02 THRUM -->
+    <article class="card" data-sys="axiom" style="--glow:rgba(95,233,208,.15)">
+      <a class="poster" href="games/02-thrum.html" target="_blank" rel="noopener" aria-label="Play THRUM">
+        <svg viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect width="400" height="250" fill="#04050a"/>
+          <circle cx="200" cy="125" r="30" fill="none" stroke="#5fe9d0" stroke-width="1.5" opacity="0" style="filter:drop-shadow(0 0 6px rgba(95,233,208,.8));animation:aalPulse 3.6s ease-out infinite;transform-box:fill-box;transform-origin:center"/>
+          <circle cx="200" cy="125" r="60" fill="none" stroke="#5fe9d0" stroke-width="1.2" opacity="0" style="animation:aalPulse 3.6s ease-out 1.2s infinite;transform-box:fill-box;transform-origin:center"/>
+          <circle cx="200" cy="125" r="90" fill="none" stroke="#5fe9d0" stroke-width="1" opacity="0" style="animation:aalPulse 3.6s ease-out 2.4s infinite;transform-box:fill-box;transform-origin:center"/>
+          <circle cx="200" cy="125" r="4" fill="#5fe9d0" style="filter:drop-shadow(0 0 8px #5fe9d0)"/>
+          <circle cx="312" cy="64" r="4" fill="#ffc07a" style="filter:drop-shadow(0 0 6px #ffc07a);animation:aalBlink 4s ease-in-out infinite"/>
+          <circle cx="86" cy="178" r="4" fill="#8aa6ff" style="filter:drop-shadow(0 0 6px #8aa6ff);animation:aalBlink 5s ease-in-out 1s infinite"/>
+          <circle cx="296" cy="190" r="4" fill="#f09be0" style="filter:drop-shadow(0 0 6px #f09be0);animation:aalBlink 6s ease-in-out 2s infinite"/>
+          <circle cx="72" cy="58" r="4" fill="#ffc07a" style="filter:drop-shadow(0 0 6px #ffc07a);animation:aalBlink 4.5s ease-in-out .5s infinite"/>
+          <circle cx="180" cy="215" r="3" fill="#8aa6ff" style="animation:aalBlink 5.5s ease-in-out 1.5s infinite"/>
+        </svg>
+        <span class="pnum">02</span>
+        <span class="pplay">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></span>
+      </a>
+      <div class="cbody">
+        <div class="chead"><h3>THRUM</h3><span class="dots" aria-hidden="true"><i style="background:#5fe9d0;box-shadow:0 0 6px #5fe9d0"></i><i style="background:#ffc07a;box-shadow:0 0 6px #ffc07a"></i><i style="background:#8aa6ff;box-shadow:0 0 6px #8aa6ff"></i><i style="background:#f09be0;box-shadow:0 0 6px #f09be0"></i></span></div>
+        <p class="cdesc en">An arcade game about wave propagation and rhythm. Click anywhere to release a wave — each click is priced by the consequence it leaves behind, not by what it hits.</p>
+        <p class="cdesc vi">Một game arcade về sự lan truyền của sóng và nhịp điệu. Nhấn vào bất cứ đâu để phát ra một con sóng — mỗi cú nhấn được định giá bởi hệ quả nó để lại, chứ không phải bởi thứ nó chạm tới.</p>
+        <div class="cfoot">
+          <a class="guesslink r-off" href="#guess">MODEL ▒▒▒▒▒▒ — <span class="en">take a guess</span><span class="sep"> · </span><span class="vi">đoán thử</span></a>
+          <div class="cmodel r-on"><span class="mline">Opus 5 Max — Claude Code · Max</span><span class="badge b-axiom">■ AXIOM</span></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 03 CLOUD COVER -->
+    <article class="card" data-sys="dogma" style="--glow:rgba(86,184,255,.2)">
+      <a class="poster" href="games/03-cloud-cover.html" target="_blank" rel="noopener" aria-label="Play Cloud Cover">
+        <svg viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <defs>
+            <linearGradient id="ccSky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#2b6fd6"/><stop offset="1" stop-color="#9fd8f2"/>
+            </linearGradient>
+            <linearGradient id="ccSea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#2f7fe0"/><stop offset="1" stop-color="#5db2ff"/>
+            </linearGradient>
+            <linearGradient id="ccSand" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f1c9a5"/><stop offset="1" stop-color="#d9a377"/>
+            </linearGradient>
+          </defs>
+          <rect width="400" height="152" fill="url(#ccSky)"/>
+          <rect y="152" width="400" height="32" fill="url(#ccSea)"/>
+          <rect y="184" width="400" height="66" fill="url(#ccSand)"/>
+          <circle cx="304" cy="42" r="34" fill="#ffe9a0" opacity=".22"/>
+          <circle cx="304" cy="42" r="17" fill="#fff1c2" style="filter:drop-shadow(0 0 14px rgba(255,233,160,.95));animation:aalSoft 5s ease-in-out infinite"/>
+          <path d="M52 46q7-6 13 0" stroke="#f2f7ff" stroke-width="1.6" fill="none" opacity=".8"/>
+          <path d="M74 36q7-6 13 0" stroke="#f2f7ff" stroke-width="1.6" fill="none" opacity=".6"/>
+          <ellipse cx="128" cy="212" rx="66" ry="17" fill="#a8763f" opacity=".42"/>
+          <ellipse cx="128" cy="212" rx="46" ry="11" fill="#8f5e3f" opacity=".3"/>
+          <g style="animation:aalDrift 9s ease-in-out infinite">
+            <ellipse cx="152" cy="104" rx="50" ry="15" fill="#ffffff"/>
+            <circle cx="128" cy="97" r="19" fill="#ffffff"/>
+            <circle cx="156" cy="89" r="25" fill="#ffffff"/>
+            <circle cx="183" cy="99" r="17" fill="#eaf4ff"/>
+          </g>
+          <g>
+            <circle cx="122" cy="207" r="17" fill="none" stroke="#ffffff" stroke-width="3" opacity=".55"/>
+            <circle cx="122" cy="207" r="17" fill="none" stroke="#2b6fd6" stroke-width="3" stroke-linecap="round" stroke-dasharray="77 31" transform="rotate(-90 122 207)"/>
+            <polygon points="116,208 128,208 122,224" fill="#8f5e3f"/>
+            <circle cx="122" cy="203" r="8" fill="#8fe3c4"/>
+          </g>
+          <g>
+            <polygon points="292,212 304,212 298,228" fill="#8f5e3f"/>
+            <circle cx="298" cy="207" r="8" fill="#ff8fab"/>
+            <path d="M291 210q4 9 1 14" stroke="#ff6f3c" stroke-width="2.2" fill="none" stroke-linecap="round" style="animation:aalSoft 3s ease-in-out infinite"/>
+          </g>
+          <g opacity=".95">
+            <polygon points="60,196 70,196 65,209" fill="#8f5e3f"/>
+            <circle cx="65" cy="192" r="6.5" fill="#ffe27a"/>
+          </g>
+        </svg>
+        <span class="pnum" style="color:rgba(10,20,40,.8)">03</span>
+        <span class="pplay" style="color:rgba(10,20,40,.75)">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></span>
+      </a>
+      <div class="cbody">
+        <div class="chead"><h3>Cloud Cover</h3><span class="dots" aria-hidden="true"><i style="background:#56b8ff;box-shadow:0 0 6px #56b8ff"></i><i style="background:#ffe27a;box-shadow:0 0 6px #ffe27a"></i><i style="background:#f1c9a5;box-shadow:0 0 6px #f1c9a5"></i><i style="background:#ff6f3c;box-shadow:0 0 6px #ff6f3c"></i></span></div>
+        <p class="cdesc en">Be the shade. Steering a cloud means steering its shadow — but the sun keeps moving it. Hold each ice cream in shade until its ring fills, and tap to rain when the cloud turns grey. Fly low for a crisp shadow, high for a wide soft one.</p>
+        <p class="cdesc vi">Hãy làm bóng mát. Điều khiển một đám mây cũng là điều khiển cái bóng của nó — nhưng mặt trời thì không ngừng dịch chuyển cái bóng ấy. Giữ mỗi cây kem trong bóng râm cho tới khi vòng tròn của nó đầy, và chạm để làm mưa khi mây chuyển xám. Bay thấp thì bóng sắc nét, bay cao thì bóng rộng nhưng mờ.</p>
+        <div class="cfoot">
+          <a class="guesslink r-off" href="#guess">MODEL ▒▒▒▒▒▒ — <span class="en">take a guess</span><span class="sep"> · </span><span class="vi">đoán thử</span></a>
+          <div class="cmodel r-on"><span class="mline">Fable 5.1 Max — Claude Code · Max</span><span class="badge b-dogma">○ DOGMA</span></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 04 AXISONANCE -->
+    <article class="card" data-sys="axiom" style="--glow:rgba(255,108,168,.14)">
+      <a class="poster" href="games/04-axisonance.html" target="_blank" rel="noopener" aria-label="Play AXISONANCE">
+        <svg viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect width="400" height="250" fill="#070811"/>
+          <line x1="40" y1="210" x2="360" y2="40" stroke="rgba(184,146,255,.55)" stroke-width="1.2" style="filter:drop-shadow(0 0 4px rgba(184,146,255,.5));animation:aalSpin 36s linear infinite;transform-box:fill-box;transform-origin:center"/>
+          <circle cx="120" cy="78" r="7" fill="#ff6ca8" style="filter:drop-shadow(0 0 8px #ff6ca8);animation:aalSoft 4s ease-in-out infinite"/>
+          <circle cx="296" cy="176" r="6" fill="#ffd166" style="filter:drop-shadow(0 0 8px #ffd166);animation:aalSoft 5s ease-in-out 1s infinite"/>
+          <circle cx="330" cy="120" r="4" fill="#67f5ff" style="filter:drop-shadow(0 0 6px #67f5ff);animation:aalSoft 6s ease-in-out 2s infinite"/>
+          <circle cx="252" cy="58" r="9" fill="none" stroke="#67f5ff" stroke-width="1.5" style="filter:drop-shadow(0 0 5px #67f5ff);animation:aalBlink 6s ease-in-out infinite"/>
+          <circle cx="92" cy="182" r="8" fill="none" stroke="#78f7a6" stroke-width="1.5" style="filter:drop-shadow(0 0 5px #78f7a6);animation:aalBlink 7s ease-in-out 2s infinite"/>
+          <circle cx="206" cy="128" r="11" fill="none" stroke="#b892ff" stroke-width="1.5" style="filter:drop-shadow(0 0 5px #b892ff);animation:aalSoft 6s ease-in-out infinite"/>
+        </svg>
+        <span class="pnum">04</span>
+        <span class="pplay">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></span>
+      </a>
+      <div class="cbody">
+        <div class="chead"><h3>AXISONANCE</h3><span class="dots" aria-hidden="true"><i style="background:#ff6ca8;box-shadow:0 0 6px #ff6ca8"></i><i style="background:#b892ff;box-shadow:0 0 6px #b892ff"></i><i style="background:#67f5ff;box-shadow:0 0 6px #67f5ff"></i><i style="background:#ffd166;box-shadow:0 0 6px #ffd166"></i></span></div>
+        <p class="cdesc en">One gesture, one axis. Move to rotate the crease until a solid light sits inside its hollow twin, then mirror everything. Match several at once to form a chord.</p>
+        <p class="cdesc vi">Một cử chỉ, một trục. Di chuyển để xoay nếp gấp cho tới khi ánh sáng đặc nằm gọn trong bản sao rỗng của nó, rồi phản chiếu tất cả. Ghép nhiều cặp cùng lúc để tạo thành một hợp âm.</p>
+        <div class="cfoot">
+          <a class="guesslink r-off" href="#guess">MODEL ▒▒▒▒▒▒ — <span class="en">take a guess</span><span class="sep"> · </span><span class="vi">đoán thử</span></a>
+          <div class="cmodel r-on"><span class="mline">Sol 5.6 Max — Codex · Max</span><span class="badge b-axiom">■ AXIOM</span></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 05 RIFT -->
+    <article class="card" data-sys="axiom" style="--glow:rgba(221,249,136,.14)">
+      <a class="poster" href="games/05-rift.html" target="_blank" rel="noopener" aria-label="Play RIFT">
+        <svg viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect width="400" height="250" fill="#0b110d"/>
+          <line x1="112" y1="92" x2="288" y2="178" stroke="#caddbb" stroke-width="1.2" stroke-dasharray="7 7" opacity=".8" style="animation:aalDash 2.2s linear infinite"/>
+          <circle cx="112" cy="92" r="6" fill="#ddf988" style="filter:drop-shadow(0 0 8px #ddf988);animation:aalSoft 4s ease-in-out infinite"/>
+          <circle cx="288" cy="178" r="6" fill="#ddf988" style="filter:drop-shadow(0 0 8px #ddf988);animation:aalSoft 4s ease-in-out infinite"/>
+          <circle cx="300" cy="70" r="5" fill="#ff9984" style="filter:drop-shadow(0 0 7px #ff9984);animation:aalBlink 5s ease-in-out 1s infinite"/>
+          <circle cx="140" cy="196" r="5" fill="#ff9984" style="filter:drop-shadow(0 0 7px #ff9984);animation:aalBlink 6s ease-in-out 2s infinite"/>
+          <circle cx="60" cy="150" r="2.5" fill="#caddbb" opacity=".7"/>
+          <circle cx="340" cy="220" r="2" fill="#caddbb" opacity=".5"/>
+        </svg>
+        <span class="pnum">05</span>
+        <span class="pplay">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></span>
+      </a>
+      <div class="cbody">
+        <div class="chead"><h3>RIFT</h3><span class="dots" aria-hidden="true"><i style="background:#ddf988;box-shadow:0 0 6px #ddf988"></i><i style="background:#ff9984;box-shadow:0 0 6px #ff9984"></i><i style="background:#caddbb;box-shadow:0 0 6px #caddbb"></i></span></div>
+        <p class="cdesc en">A small experiment in folding space. Draw a seam between a pair of twin lights and release to bring them together — cut roughly at a right angle to the line that joins them.</p>
+        <p class="cdesc vi">Một thử nghiệm nhỏ về việc gấp không gian. Vẽ một đường nối giữa cặp ánh sáng song sinh rồi thả ra để đưa chúng lại gần nhau — cắt gần vuông góc với đường nối chúng.</p>
+        <div class="cfoot">
+          <a class="guesslink r-off" href="#guess">MODEL ▒▒▒▒▒▒ — <span class="en">take a guess</span><span class="sep"> · </span><span class="vi">đoán thử</span></a>
+          <div class="cmodel r-on"><span class="mline">Astra Max — Codex · Max</span><span class="badge b-axiom">■ AXIOM</span></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 06 FOLDLIGHT -->
+    <article class="card" data-sys="dogma" style="--glow:rgba(213,244,174,.14)">
+      <a class="poster" href="games/06-foldlight.html" target="_blank" rel="noopener" aria-label="Play FOLDLIGHT">
+        <svg viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect width="400" height="250" fill="#121c1d"/>
+          <line x1="226" y1="14" x2="176" y2="236" stroke="#94a59c" stroke-width="1" opacity=".85"/>
+          <circle cx="104" cy="118" r="5" fill="#d5f4ae" style="filter:drop-shadow(0 0 8px #d5f4ae);animation:aalSoft 6s ease-in-out infinite"/>
+          <circle cx="306" cy="88" r="4" fill="#edf0df" style="filter:drop-shadow(0 0 7px #edf0df);animation:aalSoft 7s ease-in-out 1.5s infinite"/>
+          <circle cx="282" cy="192" r="3" fill="#d5f4ae" style="filter:drop-shadow(0 0 6px #d5f4ae);animation:aalSoft 8s ease-in-out 3s infinite"/>
+          <circle cx="150" cy="60" r="2" fill="#94a59c" opacity=".6"/>
+        </svg>
+        <span class="pnum">06</span>
+        <span class="pplay">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></span>
+      </a>
+      <div class="cbody">
+        <div class="chead"><h3>FOLDLIGHT</h3><span class="dots" aria-hidden="true"><i style="background:#d5f4ae;box-shadow:0 0 6px #d5f4ae"></i><i style="background:#edf0df;box-shadow:0 0 6px #edf0df"></i><i style="background:#94a59c;box-shadow:0 0 6px #94a59c"></i></span></div>
+        <p class="cdesc en">Fold the space between drifting lights. Drag a crease between them and release to bring them together — arrow keys move the crease, Q and E rotate it.</p>
+        <p class="cdesc vi">Gấp lại khoảng không giữa những ánh sáng đang trôi. Kéo một nếp gấp giữa chúng rồi thả ra để hợp chúng lại — phím mũi tên di chuyển nếp gấp, Q và E xoay nó.</p>
+        <div class="cfoot">
+          <a class="guesslink r-off" href="#guess">MODEL ▒▒▒▒▒▒ — <span class="en">take a guess</span><span class="sep"> · </span><span class="vi">đoán thử</span></a>
+          <div class="cmodel r-on"><span class="mline">Astra Max — Codex · Max</span><span class="badge b-dogma">○ DOGMA</span></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 07 AFTERLIGHT -->
+    <article class="card" data-sys="none" style="--glow:rgba(185,255,227,.14)">
+      <a class="poster" href="games/07-afterlight.html" target="_blank" rel="noopener" aria-label="Play AFTERLIGHT">
+        <svg viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect width="400" height="250" fill="#071719"/>
+          <circle cx="302" cy="118" r="6" fill="#ffcf91" style="filter:drop-shadow(0 0 12px rgba(255,207,145,.9));animation:aalSoft 3.5s ease-in-out infinite"/>
+          <circle cx="252" cy="122" r="10" fill="none" stroke="rgba(185,255,227,.75)" stroke-width="1.5" style="animation:aalSoft 3.5s ease-in-out .3s infinite"/>
+          <circle cx="204" cy="126" r="9" fill="none" stroke="rgba(185,255,227,.55)" stroke-width="1.5" style="animation:aalSoft 3.5s ease-in-out .6s infinite"/>
+          <circle cx="156" cy="129" r="8" fill="none" stroke="rgba(185,255,227,.4)" stroke-width="1.5" style="animation:aalSoft 3.5s ease-in-out .9s infinite"/>
+          <circle cx="108" cy="132" r="7" fill="none" stroke="rgba(185,255,227,.28)" stroke-width="1.5" style="animation:aalSoft 3.5s ease-in-out 1.2s infinite"/>
+          <circle cx="62" cy="135" r="6" fill="none" stroke="rgba(185,255,227,.18)" stroke-width="1.5" style="animation:aalSoft 3.5s ease-in-out 1.5s infinite"/>
+          <circle cx="340" cy="60" r="2" fill="#fff9e9" opacity=".6" style="animation:aalBlink 6s ease-in-out infinite"/>
+          <circle cx="80" cy="60" r="2" fill="#fff9e9" opacity=".4" style="animation:aalBlink 7s ease-in-out 2s infinite"/>
+        </svg>
+        <span class="pnum">07</span>
+        <span class="pplay">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></span>
+      </a>
+      <div class="cbody">
+        <div class="chead"><h3>AFTERLIGHT</h3><span class="dots" aria-hidden="true"><i style="background:#ffcf91;box-shadow:0 0 6px #ffcf91"></i><i style="background:#b9ffe3;box-shadow:0 0 6px #b9ffe3"></i><i style="background:#fff9e9;box-shadow:0 0 6px #fff9e9"></i></span></div>
+        <p class="cdesc en">A one-button arcade experiment. Hold to leave echoes trailing behind you, and release at the exact moment another light enters one of them.</p>
+        <p class="cdesc vi">Một thử nghiệm arcade chỉ với một nút bấm. Giữ để để lại những tiếng vọng phía sau, và thả ra đúng khoảnh khắc một ánh sáng khác đi vào một trong số đó.</p>
+        <div class="cfoot">
+          <a class="guesslink r-off" href="#guess">MODEL ▒▒▒▒▒▒ — <span class="en">take a guess</span><span class="sep"> · </span><span class="vi">đoán thử</span></a>
+          <div class="cmodel r-on"><span class="mline">GPT 6 Pro — ChatGPT (Pro)</span><span class="badge b-none">— <span class="en">NO SYSTEM</span><span class="sep"> · </span><span class="vi">KHÔNG HỆ THỐNG</span></span></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 08 CHRONO TETHER -->
+    <article class="card" data-sys="none" style="--glow:rgba(255,0,255,.16)">
+      <a class="poster" href="games/08-chrono-tether.html" target="_blank" rel="noopener" aria-label="Play Chrono Tether">
+        <svg viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect width="400" height="250" fill="#0a0512"/>
+          <polygon points="60,60 74,66 64,76" fill="#ff3366" style="filter:drop-shadow(0 0 6px #ff3366);animation:aalBlink 3s ease-in-out infinite"/>
+          <polygon points="330,190 344,196 334,206" fill="#ff3366" style="filter:drop-shadow(0 0 6px #ff3366);animation:aalBlink 4s ease-in-out 1s infinite"/>
+          <polygon points="320,50 334,56 324,66" fill="#ff3366" style="filter:drop-shadow(0 0 6px #ff3366);animation:aalBlink 3.5s ease-in-out .5s infinite"/>
+          <circle cx="200" cy="125" r="5" fill="#00ffff" style="filter:drop-shadow(0 0 10px #00ffff)"/>
+          <g style="animation:aalSpin 4s linear infinite;transform-box:fill-box;transform-origin:center">
+            <circle cx="122" cy="164" r="7" fill="transparent"/>
+            <line x1="200" y1="125" x2="278" y2="86" stroke="#ff00ff" stroke-width="2" style="filter:drop-shadow(0 0 8px #ff00ff)"/>
+            <circle cx="278" cy="86" r="7" fill="#ff00ff" style="filter:drop-shadow(0 0 12px #ff00ff)"/>
+            <circle cx="262" cy="94" r="3" fill="rgba(0,255,255,.7)"/>
+            <circle cx="246" cy="102" r="2" fill="rgba(0,255,255,.45)"/>
+          </g>
+        </svg>
+        <span class="pnum">08</span>
+        <span class="pplay">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></span>
+      </a>
+      <div class="cbody">
+        <div class="chead"><h3>Chrono Tether</h3><span class="dots" aria-hidden="true"><i style="background:#ff00ff;box-shadow:0 0 6px #ff00ff"></i><i style="background:#00ffff;box-shadow:0 0 6px #00ffff"></i><i style="background:#ff3366;box-shadow:0 0 6px #ff3366"></i></span></div>
+        <p class="cdesc en">Hold to drop an anchor and your Lumen swings into orbit around it. Release to fly free and trigger time dilation, then slice the enemies with your tether line.</p>
+        <p class="cdesc vi">Giữ để thả một mỏ neo, Lumen của bạn sẽ bay vào quỹ đạo quanh nó. Thả ra để phóng đi và kích hoạt giãn nở thời gian, rồi chém kẻ địch bằng sợi dây neo.</p>
+        <div class="cfoot">
+          <a class="guesslink r-off" href="#guess">MODEL ▒▒▒▒▒▒ — <span class="en">take a guess</span><span class="sep"> · </span><span class="vi">đoán thử</span></a>
+          <div class="cmodel r-on"><span class="mline">Gemini 3.1 Pro — Gemini</span><span class="badge b-none">— <span class="en">NO SYSTEM</span><span class="sep"> · </span><span class="vi">KHÔNG HỆ THỐNG</span></span></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 09 SINGULARIS -->
+    <article class="card" data-sys="none" style="--glow:rgba(0,240,255,.16)">
+      <a class="poster" href="games/09-singularis.html" target="_blank" rel="noopener" aria-label="Play SINGULARIS">
+        <svg viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect width="400" height="250" fill="#04050a"/>
+          <circle cx="200" cy="125" r="18" fill="none" stroke="rgba(0,240,255,.5)" stroke-width="1.5" opacity="0" style="animation:aalPulse 2.6s ease-out infinite;transform-box:fill-box;transform-origin:center"/>
+          <circle cx="200" cy="125" r="10" fill="#00f0ff" style="filter:drop-shadow(0 0 16px #00f0ff);animation:aalSoft 2.5s ease-in-out infinite"/>
+          <g style="animation:aalSpin 7s linear infinite;transform-box:fill-box;transform-origin:center">
+            <circle cx="120" cy="60" r="2" fill="transparent"/>
+            <polygon points="132,78 144,84 134,92" fill="#ff0055" style="filter:drop-shadow(0 0 6px #ff0055)"/>
+            <polygon points="268,88 280,94 270,102" fill="#ffe600" style="filter:drop-shadow(0 0 6px #ffe600)"/>
+            <polygon points="256,176 268,182 258,190" fill="#00ffaa" style="filter:drop-shadow(0 0 6px #00ffaa)"/>
+            <polygon points="128,168 140,174 130,182" fill="#ff0055" style="filter:drop-shadow(0 0 6px #ff0055)"/>
+          </g>
+        </svg>
+        <span class="pnum">09</span>
+        <span class="pplay">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></span>
+      </a>
+      <div class="cbody">
+        <div class="chead"><h3>SINGULARIS</h3><span class="dots" aria-hidden="true"><i style="background:#00f0ff;box-shadow:0 0 6px #00f0ff"></i><i style="background:#ff0055;box-shadow:0 0 6px #ff0055"></i><i style="background:#ffe600;box-shadow:0 0 6px #ffe600"></i><i style="background:#00ffaa;box-shadow:0 0 6px #00ffaa"></i></span></div>
+        <p class="cdesc en">Glide your Radiant Core through the void. Hold to open a gravitational well that spins shards into orbit, then release a supernova to fling them out as projectiles.</p>
+        <p class="cdesc vi">Lướt Radiant Core của bạn xuyên qua khoảng không. Giữ để mở một giếng hấp dẫn cuốn các mảnh vỡ vào quỹ đạo, rồi thả ra một vụ nổ siêu tân tinh để bắn chúng đi.</p>
+        <div class="cfoot">
+          <a class="guesslink r-off" href="#guess">MODEL ▒▒▒▒▒▒ — <span class="en">take a guess</span><span class="sep"> · </span><span class="vi">đoán thử</span></a>
+          <div class="cmodel r-on"><span class="mline">Gemini 3.8 Flash — Gemini</span><span class="badge b-none">— <span class="en">NO SYSTEM</span><span class="sep"> · </span><span class="vi">KHÔNG HỆ THỐNG</span></span></div>
+        </div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<!-- ================= BRIEF ================= -->
+<section class="sec" id="brief">
+  <div class="hr">
+    <div class="eyebrow"><span class="en">THE BRIEF</span><span class="sep"> · </span><span class="vi">ĐỀ BÀI</span></div>
+    <h2 class="en">The prompt every model received</h2>
+    <p class="sub vi">Đề bài mà mọi model đều nhận được</p>
+    <p class="body-en en">Word for word, with no follow-up instructions, no examples and no corrections.</p>
+    <p class="body-vi vi">Nguyên văn, không có hướng dẫn bổ sung, không ví dụ và không chỉnh sửa.</p>
+  </div>
+  <div class="two">
+    <div class="col">
+      <div class="collab">EN — ORIGINAL</div>
+      <p>Create an exceptionally polished, addictive casual arcade game in a single self-contained HTML file.</p>
+      <p>The core mechanic should be simple enough to understand instantly, but have enough depth to make the player want to keep improving their high score.</p>
+      <p>Prioritize genuine originality. Invent a fresh core mechanic or interaction that does not feel like a clone, remix, or obvious variation of an existing popular game. Surprise me with something that feels new.</p>
+      <p>Do not start from a known game genre or familiar mechanic. Invent the game from first principles.</p>
+      <p>You decide everything else.</p>
     </div>
-
-    <div class="grid" id="grid">
-
-      <!-- UMBRA -->
-      <article class="card" data-harness="axiom" style="--accent:#f0a860">
-        <a class="card-link" href="games/fable-5-1-max-axiom.html" target="_blank" rel="noopener">
-          <div class="card-top">
-            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <circle cx="22" cy="22" r="7" class="breathe" fill="currentColor" fill-opacity=".22"/>
-              <path d="M27.5 26.5 52 51M16.5 27.5 41 52M27.5 26.5 41 52" stroke-opacity=".5"/>
-              <path d="M16.5 27.5 41 52" stroke-opacity=".5"/>
-              <circle cx="22" cy="22" r="13" stroke-opacity=".28" stroke-dasharray="2 5"/>
-            </svg>
-            <div class="chips"><span class="chip chip-axiom">Axiom</span><span class="chip">Claude Code</span></div>
-          </div>
-          <h3 class="gname">UMBRA</h3>
-          <p class="mname">Fable 5.1 Max (Axiom)</p>
-          <p class="gdesc en">A game of light and shade. Move to cast a shadow — keep the cold in the dark, keep the warm in the light. The nearer the sun, the wider the shadow.</p>
-          <p class="gdesc vi">Một trò chơi của ánh sáng và bóng tối. Di chuyển để đổ bóng — giữ cái lạnh trong bóng tối, giữ cái ấm trong ánh sáng. Càng gần mặt trời, bóng càng rộng.</p>
-          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
-        </a>
-      </article>
-
-      <!-- THRUM -->
-      <article class="card" data-harness="axiom" style="--accent:#4fd1c5">
-        <a class="card-link" href="games/opus-5-max-axiom.html" target="_blank" rel="noopener">
-          <div class="card-top">
-            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <circle cx="32" cy="32" r="4" fill="currentColor"/>
-              <circle cx="32" cy="32" r="11" stroke-opacity=".7" class="breathe"/>
-              <circle cx="32" cy="32" r="18" stroke-opacity=".42"/>
-              <circle cx="32" cy="32" r="25" stroke-opacity=".2"/>
-            </svg>
-            <div class="chips"><span class="chip chip-axiom">Axiom</span><span class="chip">Claude Code</span></div>
-          </div>
-          <h3 class="gname">THRUM</h3>
-          <p class="mname">Opus 5 Max (Axiom)</p>
-          <p class="gdesc en">An arcade game about wave propagation and rhythm. Click anywhere to release a wave — each click is priced by the consequence it leaves behind, not by what it hits.</p>
-          <p class="gdesc vi">Một game arcade về sự lan truyền của sóng và nhịp điệu. Nhấn vào bất cứ đâu để phát ra một con sóng — mỗi cú nhấn được định giá bởi hệ quả nó để lại, chứ không phải bởi thứ nó chạm tới.</p>
-          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
-        </a>
-      </article>
-
-      <!-- AXISONANCE -->
-      <article class="card" data-harness="axiom" style="--accent:#ffd166">
-        <a class="card-link" href="games/sol-5-6-max-axiom.html" target="_blank" rel="noopener">
-          <div class="card-top">
-            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <g class="spin">
-                <path d="M10 32h44" stroke-opacity=".45" stroke-dasharray="3 4"/>
-                <circle cx="21" cy="32" r="6.5" fill="currentColor" fill-opacity=".85" stroke="none"/>
-                <circle cx="43" cy="32" r="6.5" stroke-opacity=".85"/>
-              </g>
-              <circle cx="32" cy="32" r="2.4" fill="currentColor"/>
-            </svg>
-            <div class="chips"><span class="chip chip-axiom">Axiom</span><span class="chip">Codex</span></div>
-          </div>
-          <h3 class="gname">AXISONANCE</h3>
-          <p class="mname">Sol 5.6 Max (Axiom)</p>
-          <p class="gdesc en">One gesture, one axis. Move to rotate the crease until a solid light sits inside its hollow twin, then mirror everything. Match several at once to form a chord.</p>
-          <p class="gdesc vi">Một cử chỉ, một trục. Di chuyển để xoay nếp gấp cho tới khi ánh sáng đặc nằm gọn trong bản sao rỗng của nó, rồi phản chiếu tất cả. Ghép nhiều cặp cùng lúc để tạo thành một hợp âm.</p>
-          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
-        </a>
-      </article>
-
-      <!-- RIFT -->
-      <article class="card" data-harness="axiom" style="--accent:#6fb3ff">
-        <a class="card-link" href="games/astra-max-axiom.html" target="_blank" rel="noopener">
-          <div class="card-top">
-            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <path d="M14 46 50 18" stroke-opacity=".35" stroke-dasharray="3 4"/>
-              <path d="M18 20 46 44" class="breathe" stroke-width="2"/>
-              <circle cx="15" cy="47" r="5.5" fill="currentColor" fill-opacity=".8" stroke="none"/>
-              <circle cx="49" cy="17" r="5.5" fill="currentColor" fill-opacity=".8" stroke="none"/>
-            </svg>
-            <div class="chips"><span class="chip chip-axiom">Axiom</span><span class="chip">Codex</span></div>
-          </div>
-          <h3 class="gname">RIFT</h3>
-          <p class="mname">Astra Max (Axiom)</p>
-          <p class="gdesc en">A small experiment in folding space. Draw a seam between a pair of twin lights and release to bring them together — cut roughly at a right angle to the line that joins them.</p>
-          <p class="gdesc vi">Một thử nghiệm nhỏ về việc gấp không gian. Vẽ một đường nối giữa cặp ánh sáng song sinh rồi thả ra để đưa chúng lại gần nhau — cắt gần vuông góc với đường nối chúng.</p>
-          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
-        </a>
-      </article>
-
-      <!-- FOLDLIGHT -->
-      <article class="card" data-harness="dogma" style="--accent:#7ce0b0">
-        <a class="card-link" href="games/astra-max-dogma.html" target="_blank" rel="noopener">
-          <div class="card-top">
-            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <path d="M32 12v40" stroke-opacity=".4" stroke-dasharray="3 4"/>
-              <path d="M18 24 32 32 18 40" stroke-opacity=".75"/>
-              <path d="M46 24 32 32 46 40" stroke-opacity=".75"/>
-              <circle cx="32" cy="32" r="5" class="breathe" fill="currentColor" fill-opacity=".5"/>
-            </svg>
-            <div class="chips"><span class="chip chip-dogma">Dogma</span><span class="chip">Codex</span></div>
-          </div>
-          <h3 class="gname">FOLDLIGHT</h3>
-          <p class="mname">Astra Max (Dogma)</p>
-          <p class="gdesc en">Fold the space between drifting lights. Drag a crease between them and release to bring them together — arrow keys move the crease, Q and E rotate it.</p>
-          <p class="gdesc vi">Gấp lại khoảng không giữa những ánh sáng đang trôi. Kéo một nếp gấp giữa chúng rồi thả ra để hợp chúng lại — phím mũi tên di chuyển nếp gấp, Q và E xoay nó.</p>
-          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
-        </a>
-      </article>
-
-      <!-- AFTERLIGHT -->
-      <article class="card" data-harness="none" style="--accent:#ff9d8a">
-        <a class="card-link" href="games/gpt-6-pro.html" target="_blank" rel="noopener">
-          <div class="card-top">
-            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <circle cx="44" cy="32" r="5" fill="currentColor" stroke="none"/>
-              <circle cx="32" cy="32" r="7" stroke-opacity=".6" class="breathe"/>
-              <circle cx="21" cy="32" r="8.5" stroke-opacity=".34"/>
-              <circle cx="11" cy="32" r="10" stroke-opacity=".16"/>
-            </svg>
-            <div class="chips"><span class="chip chip-none"><span class="en">No system</span><span class="vi">Không hệ thống</span></span><span class="chip">ChatGPT</span></div>
-          </div>
-          <h3 class="gname">AFTERLIGHT</h3>
-          <p class="mname">GPT 6 Pro</p>
-          <p class="gdesc en">A one-button arcade experiment. Hold to leave echoes trailing behind you, and release at the exact moment another light enters one of them.</p>
-          <p class="gdesc vi">Một thử nghiệm arcade chỉ với một nút bấm. Giữ để để lại những tiếng vọng phía sau, và thả ra đúng khoảnh khắc một ánh sáng khác đi vào một trong số đó.</p>
-          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
-        </a>
-      </article>
-
-      <!-- CHRONO TETHER -->
-      <article class="card" data-harness="none" style="--accent:#ff4fd8">
-        <a class="card-link" href="games/gemini-3-1-pro.html" target="_blank" rel="noopener">
-          <div class="card-top">
-            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <circle cx="32" cy="32" r="3" fill="currentColor" stroke="none"/>
-              <circle cx="32" cy="32" r="17" stroke-opacity=".3" stroke-dasharray="3 5"/>
-              <g class="orbit"><path d="M32 32 32 15" stroke-opacity=".7"/><circle cx="32" cy="15" r="5" fill="currentColor" fill-opacity=".85" stroke="none"/></g>
-            </svg>
-            <div class="chips"><span class="chip chip-none"><span class="en">No system</span><span class="vi">Không hệ thống</span></span><span class="chip">Gemini</span></div>
-          </div>
-          <h3 class="gname">Chrono Tether</h3>
-          <p class="mname">Gemini 3.1 Pro</p>
-          <p class="gdesc en">Hold to drop an anchor and your Lumen swings into orbit around it. Release to fly free and trigger time dilation, then slice the enemies with your tether line.</p>
-          <p class="gdesc vi">Giữ để thả một mỏ neo, Lumen của bạn sẽ bay vào quỹ đạo quanh nó. Thả ra để phóng đi và kích hoạt giãn nở thời gian, rồi chém kẻ địch bằng sợi dây neo.</p>
-          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
-        </a>
-      </article>
-
-      <!-- SINGULARIS -->
-      <article class="card" data-harness="none" style="--accent:#7c8cff">
-        <a class="card-link" href="games/gemini-3-8-flash.html" target="_blank" rel="noopener">
-          <div class="card-top">
-            <svg class="motif" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <circle cx="32" cy="32" r="5.5" fill="currentColor" fill-opacity=".85" stroke="none" class="breathe"/>
-              <g class="spin" stroke-opacity=".6">
-                <path d="M32 14a18 18 0 0 1 15.6 9"/>
-                <path d="M32 50a18 18 0 0 1-15.6-9"/>
-              </g>
-              <circle cx="32" cy="32" r="23" stroke-opacity=".18" stroke-dasharray="2 6"/>
-            </svg>
-            <div class="chips"><span class="chip chip-none"><span class="en">No system</span><span class="vi">Không hệ thống</span></span><span class="chip">Gemini</span></div>
-          </div>
-          <h3 class="gname">SINGULARIS</h3>
-          <p class="mname">Gemini 3.8 Flash</p>
-          <p class="gdesc en">Glide your Radiant Core through the void. Hold to open a gravitational well that spins shards into orbit, then release a supernova to fling them out as projectiles.</p>
-          <p class="gdesc vi">Lướt Radiant Core của bạn xuyên qua khoảng không. Giữ để mở một giếng hấp dẫn cuốn các mảnh vỡ vào quỹ đạo, rồi thả ra một vụ nổ siêu tân tinh để bắn chúng đi.</p>
-          <span class="play"><span class="en">Play</span><span class="vi">Chơi ngay</span><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5"/></svg></span>
-        </a>
-      </article>
-
+    <div class="col vicol">
+      <div class="collab">VI — BẢN DỊCH</div>
+      <p>Hãy tạo một game arcade casual cực kỳ trau chuốt và gây nghiện, gói trọn trong một file HTML độc lập duy nhất.</p>
+      <p>Cơ chế cốt lõi phải đủ đơn giản để hiểu được ngay lập tức, nhưng đủ chiều sâu để khiến người chơi luôn muốn cải thiện điểm số cao nhất của mình.</p>
+      <p>Ưu tiên tính nguyên bản thực sự. Hãy sáng tạo một cơ chế hoặc tương tác cốt lõi mới mẻ, không mang cảm giác là bản sao, bản phối lại, hay một biến thể hiển nhiên của một game phổ biến đã có. Hãy làm tôi bất ngờ bằng thứ gì đó thực sự mới.</p>
+      <p>Đừng bắt đầu từ một thể loại game đã biết hay một cơ chế quen thuộc. Hãy phát minh ra trò chơi từ những nguyên lý đầu tiên.</p>
+      <p>Mọi thứ còn lại do bạn quyết định.</p>
     </div>
   </div>
 </section>
 
-<hr class="rule">
+<!-- ================= SETUP ================= -->
+<section class="sec" id="setup">
+  <div class="hr">
+    <div class="eyebrow"><span class="en">THE SETUP</span><span class="sep"> · </span><span class="vi">BỐI CẢNH</span></div>
+    <h2 class="en">Axiom and Dogma are not the same thing</h2>
+    <p class="sub vi">Axiom và Dogma là hai khái niệm khác nhau</p>
+    <p class="body-en en">Some models ran inside one of two systems the author built. They sit at opposite ends of the same question: how much should you constrain a model that is being asked to be original?</p>
+    <p class="body-vi vi">Một số model chạy bên trong một trong hai hệ thống do tác giả xây dựng. Chúng nằm ở hai đầu đối lập của cùng một câu hỏi: nên ràng buộc đến mức nào một model đang được yêu cầu phải sáng tạo?</p>
+  </div>
 
-<!-- ============ METHOD ============ -->
-<section class="sec" id="method">
-  <div class="wrap">
-    <div class="sec-head">
-      <span class="sec-num">03 — <span class="en">THE SETUP</span><span class="vi">CÁCH THIẾT LẬP</span></span>
-      <h2 class="en">Axiom and Dogma are not the same thing</h2>
-      <h2 class="vi">Axiom và Dogma là hai khái niệm khác nhau</h2>
-      <p class="en">Some models ran inside one of two systems the author built. They sit at opposite ends of the same question: how much should you constrain a model that is being asked to be original?</p>
-      <p class="vi">Một số model chạy bên trong một trong hai hệ thống do tác giả xây dựng. Chúng nằm ở hai đầu đối lập của cùng một câu hỏi: nên ràng buộc đến mức nào một model đang được yêu cầu phải sáng tạo?</p>
+  <div class="panels">
+    <div class="panel p-axiom">
+      <div class="plab">■ AXIOM</div>
+      <div class="psub"><span class="en">a strict discipline system</span><span class="sep"> · </span><span class="vi">một hệ thống kỷ luật chặt chẽ</span></div>
+      <p class="en">Axiom is a plugin the author built and uses for every one of their tasks. It runs through a fixed sequence of steps that the author laid down, and through which the AI delegates the work out to agents.</p>
+      <p class="vi">Axiom là một plugin do tác giả tạo ra và sử dụng dành riêng cho mọi task của mình, chạy theo một hệ thống các bước mà tác giả đặt ra để AI giao việc cho các agents thực hiện.</p>
+      <div class="pmeta">4 <span class="en">ENTRIES</span><span class="sep"> · </span><span class="vi">BÀI</span> — FABLE 5.1 MAX · OPUS 5 MAX · SOL 5.6 MAX · ASTRA MAX</div>
+    </div>
+    <div class="panel p-dogma">
+      <div class="plab">○ DOGMA</div>
+      <div class="psub"><span class="en">a philosophy, not a procedure</span><span class="sep"> · </span><span class="vi">một triết lý, không phải một quy trình</span></div>
+      <p class="en">Dogma is a skill the author created recently, built on six short core philosophies. Here the author hands the decision-making over to the AI entirely.</p>
+      <p class="vi">Dogma là một skill mà tác giả mới tạo ra với 6 triết lý cơ bản ngắn gọn, và tác giả giao hoàn toàn quyền quyết định cho AI.</p>
+      <div class="pmeta">2 <span class="en">ENTRIES</span><span class="sep"> · </span><span class="vi">BÀI</span> — FABLE 5.1 MAX · ASTRA MAX</div>
+    </div>
+  </div>
+
+  <div class="pull">
+    <p class="en">Axiom and Dogma are two different concepts — one is a tightly structured system, the other is a philosophy that gives the AI full authority to decide.</p>
+    <p class="vi">Axiom và Dogma là 2 khái niệm khác nhau — một bên là hệ thống chặt chẽ, một bên là triết lý để AI toàn quyền quyết định.</p>
+  </div>
+
+  <!-- controlled pairs -->
+  <div style="margin-top:48px;border-top:1px solid var(--line);padding-top:22px">
+    <div class="eyebrow"><span class="en">CONTROLLED PAIRS — SAME MODEL, DIFFERENT SYSTEM</span><span class="sep"> · </span><span class="vi">CẶP ĐỐI CHỨNG — CÙNG MODEL, KHÁC HỆ THỐNG</span></div>
+
+    <div class="r-off" style="margin-top:16px;border:1px dashed var(--line2);padding:22px;border-radius:3px">
+      <p class="body-en en" style="margin-top:0">Two models were each run twice — same platform, same effort, only the discipline system changed. And one of them appears a third time on an entirely different platform. Which games are they? Make your guesses first: the full comparison unlocks when you reveal the answers.</p>
+      <p class="body-vi vi">Hai model đều được chạy hai lần — cùng nền tảng, cùng mức effort, chỉ thay đổi hệ thống kỷ luật. Và một trong hai còn xuất hiện lần thứ ba trên một nền tảng hoàn toàn khác. Là những game nào? Hãy đoán trước — phần so sánh đầy đủ sẽ mở khi bạn tiết lộ đáp án.</p>
+      <a href="#guess" style="display:inline-block;margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:.14em"><span class="en">Who made what? Guess below</span><span class="sep"> · </span><span class="vi">Ai làm game nào? Đoán ở dưới</span> ↓</a>
     </div>
 
-    <div class="mgrid">
-      <div class="mcard" style="--accent:#9fc4ff">
-        <span class="mtag">Axiom</span>
-        <h3 class="en">A strict discipline system</h3>
-        <h3 class="vi">Một hệ thống kỷ luật chặt chẽ</h3>
-        <p class="en">Axiom is a <strong>plugin the author built</strong> and uses for every one of their tasks. It runs through a fixed sequence of steps that the author laid down, and through which the AI delegates the work out to agents.</p>
-        <p class="vi">Axiom là một <strong>plugin do tác giả tạo ra</strong> và sử dụng dành riêng cho mọi task của mình, chạy theo một hệ thống các bước mà tác giả đặt ra để AI giao việc cho các agents thực hiện.</p>
-        <p class="en">Four entries here ran under Axiom: <strong>Fable 5.1 Max</strong>, <strong>Opus 5 Max</strong>, <strong>Sol 5.6 Max</strong> and <strong>Astra Max</strong>.</p>
-        <p class="vi">Bốn bài ở đây chạy dưới Axiom: <strong>Fable 5.1 Max</strong>, <strong>Opus 5 Max</strong>, <strong>Sol 5.6 Max</strong> và <strong>Astra Max</strong>.</p>
-      </div>
+    <div class="r-on" style="margin-top:16px">
+      <p class="body-en en" style="margin-top:0;max-width:78ch">Two models were each run twice on the same platform at the same effort, with only the discipline system changed. That gives two genuinely controlled comparisons of Axiom against Dogma — and one striking result: <strong style="color:var(--ink);font-weight:600">Fable 5.1 Max reached for a shadow-casting mechanic both times</strong>, once as a silent abstract field of light, once as a sunlit afternoon of melting ice cream. Astra Max then appears a third time as GPT 6 Pro on ChatGPT, a tier available only on Pro accounts with a very small weekly quota and a different way of reasoning from Astra on Codex.</p>
+      <p class="body-vi vi" style="max-width:78ch">Hai model đều được chạy hai lần trên cùng nền tảng với cùng mức effort, chỉ thay đổi hệ thống kỷ luật. Điều đó tạo ra hai phép so sánh thực sự có kiểm soát giữa Axiom và Dogma — và một kết quả đáng chú ý: <strong style="color:var(--ink);font-weight:600">Fable 5.1 Max cả hai lần đều tìm đến cơ chế đổ bóng</strong>, một lần là khoảng không ánh sáng trừu tượng tĩnh lặng, một lần là buổi chiều nắng với những cây kem đang tan. Astra Max sau đó xuất hiện lần thứ ba với tư cách GPT 6 Pro trên ChatGPT — bản chỉ có trên các account Pro, với hạn mức sử dụng rất ít hàng tuần và có cách reasoning khác với Astra trên Codex.</p>
 
-      <div class="mcard" style="--accent:#8ce6bb">
-        <span class="mtag">Dogma</span>
-        <h3 class="en">A philosophy, not a procedure</h3>
-        <h3 class="vi">Một triết lý, không phải một quy trình</h3>
-        <p class="en">Dogma is a <strong>skill the author created recently</strong>, built on six short core philosophies. Here the author hands the decision-making over to the AI entirely.</p>
-        <p class="vi">Dogma là một <strong>skill mà tác giả mới tạo ra</strong> với 6 triết lý cơ bản ngắn gọn, và tác giả giao hoàn toàn quyền quyết định cho AI.</p>
-        <p class="en">Axiom and Dogma are two different concepts — <strong>one is a tightly structured system, the other is a philosophy that gives the AI full authority to decide.</strong> One entry ran under Dogma: <strong>Astra Max (Dogma)</strong>.</p>
-        <p class="vi">Axiom và Dogma là 2 khái niệm khác nhau — <strong>một bên là hệ thống chặt chẽ, một bên là triết lý để AI toàn quyền quyết định.</strong> Một bài chạy dưới Dogma: <strong>Astra Max (Dogma)</strong>.</p>
-      </div>
-    </div>
+      <div class="pairs">
+        <div class="pair">
+          <div class="pairhead">FABLE 5.1 MAX · CLAUDE CODE · MAX</div>
+          <div class="pairgrid">
+            <a class="pcard" href="games/01-umbra.html" target="_blank" rel="noopener" style="--glow:rgba(255,180,92,.16)">
+              <div class="cond">■ AXIOM</div>
+              <div class="nm">01 · UMBRA</div>
+              <div class="go" style="color:#ffb45c">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></div>
+            </a>
+            <div class="vs">VS</div>
+            <a class="pcard" href="games/03-cloud-cover.html" target="_blank" rel="noopener" style="--glow:rgba(255,209,102,.16)">
+              <div class="cond">○ DOGMA</div>
+              <div class="nm">03 · Cloud Cover</div>
+              <div class="go" style="color:#ffd166">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></div>
+            </a>
+          </div>
+        </div>
 
-    <div class="note">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3.6"/></svg>
-      <div>
-        <h3 class="en">A natural three-way experiment</h3>
-        <h3 class="vi">Một thí nghiệm ba chiều tự nhiên</h3>
-        <p class="en">One model appears three times under three different conditions. <strong>Astra</strong> ran on Codex under Axiom (RIFT), on Codex under Dogma (FOLDLIGHT), and as <strong>GPT 6 Pro</strong> on ChatGPT (AFTERLIGHT) — a tier available only on Pro accounts, with a very small weekly quota and a different way of reasoning from Astra on Codex. Playing those three back to back is the closest thing here to a controlled comparison of the environment rather than the model.</p>
-        <p class="vi">Một model xuất hiện ba lần trong ba điều kiện khác nhau. <strong>Astra</strong> chạy trên Codex dưới Axiom (RIFT), trên Codex dưới Dogma (FOLDLIGHT), và với tư cách <strong>GPT 6 Pro</strong> trên ChatGPT (AFTERLIGHT) — bản chỉ có trên các account Pro, với hạn mức sử dụng rất ít hàng tuần và có cách reasoning khác với Astra trên Codex. Chơi liền ba bài này là cách gần nhất ở đây để so sánh có kiểm soát về môi trường chạy, thay vì về bản thân model.</p>
+        <div class="pair">
+          <div class="pairhead">ASTRA MAX · CODEX · MAX<span class="en"> — PLUS A THIRD ENVIRONMENT</span><span class="sep"> · </span><span class="vi">— VÀ MỘT MÔI TRƯỜNG THỨ BA</span></div>
+          <div class="pairgrid">
+            <a class="pcard" href="games/05-rift.html" target="_blank" rel="noopener" style="--glow:rgba(221,249,136,.16)">
+              <div class="cond">■ AXIOM</div>
+              <div class="nm">05 · RIFT</div>
+              <div class="go" style="color:#ddf988">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></div>
+            </a>
+            <div class="vs">VS</div>
+            <a class="pcard" href="games/06-foldlight.html" target="_blank" rel="noopener" style="--glow:rgba(213,244,174,.16)">
+              <div class="cond">○ DOGMA</div>
+              <div class="nm">06 · FOLDLIGHT</div>
+              <div class="go" style="color:#d5f4ae">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></div>
+            </a>
+            <div class="vs">+</div>
+            <a class="pcard" href="games/07-afterlight.html" target="_blank" rel="noopener" style="--glow:rgba(185,255,227,.16)">
+              <div class="cond">CHATGPT PRO · — <span class="en">NO SYSTEM</span><span class="sep"> · </span><span class="vi">KHÔNG HỆ THỐNG</span></div>
+              <div class="nm">07 · AFTERLIGHT</div>
+              <div class="go" style="color:#b9ffe3">▶ <span class="en">PLAY</span><span class="sep"> · </span><span class="vi">CHƠI</span></div>
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<hr class="rule">
+<!-- ================= REVEAL ================= -->
+<section class="sec" id="guess">
+  <div class="guessbox">
+    <div class="eyebrow" style="color:var(--amber)"><span class="en">THE REVEAL</span><span class="sep"> · </span><span class="vi">VÒNG ĐOÁN</span></div>
+    <h2 class="en" style="margin-top:16px">Which model made which game?</h2>
+    <p class="sub vi">Game nào do model nào làm?</p>
+    <p class="body-en en">Model identities are hidden everywhere above. Match each game to a model, then reveal the answers — or reveal straight away if you'd rather not guess.</p>
+    <p class="body-vi vi">Danh tính model đang được ẩn ở mọi nơi phía trên. Hãy ghép mỗi game với một model rồi tiết lộ đáp án — hoặc tiết lộ ngay nếu bạn không muốn đoán.</p>
+    <div id="guessrows" style="margin-top:20px"></div>
+    <div class="gactions">
+      <button type="button" class="btn btn-solid r-off" id="revealBtn"><span class="en">Reveal the answers</span><span class="sep"> · </span><span class="vi">Tiết lộ đáp án</span></button>
+      <button type="button" class="btn r-on" id="resetBtn"><span class="en">Hide &amp; guess again</span><span class="sep"> · </span><span class="vi">Ẩn lại &amp; đoán lại</span></button>
+      <span class="score" id="score" aria-live="polite"></span>
+    </div>
+  </div>
+</section>
 
-<!-- ============ ROSTER ============ -->
+<!-- ================= ROSTER ================= -->
 <section class="sec" id="roster">
-  <div class="wrap">
-    <div class="sec-head">
-      <span class="sec-num">04 — <span class="en">THE ROSTER</span><span class="vi">DANH SÁCH</span></span>
-      <h2 class="en">Who ran what, and where</h2>
-      <h2 class="vi">Model nào chạy ở đâu</h2>
-    </div>
-
-    <div class="tablewrap">
-      <table>
-        <thead>
-          <tr>
-            <th><span class="en">Entry</span><span class="vi">Bài dự thi</span></th>
-            <th><span class="en">Game</span><span class="vi">Trò chơi</span></th>
-            <th><span class="en">Platform</span><span class="vi">Nền tảng</span></th>
-            <th><span class="en">Effort</span><span class="vi">Effort</span></th>
-            <th><span class="en">System</span><span class="vi">Hệ thống</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td><b>Fable 5.1 Max</b></td><td><a href="games/fable-5-1-max-axiom.html" target="_blank" rel="noopener">UMBRA</a></td><td class="mono">Claude Code</td><td class="mono">Max</td><td><span class="tag a">Axiom</span></td></tr>
-          <tr><td><b>Opus 5 Max</b></td><td><a href="games/opus-5-max-axiom.html" target="_blank" rel="noopener">THRUM</a></td><td class="mono">Claude Code</td><td class="mono">Max</td><td><span class="tag a">Axiom</span></td></tr>
-          <tr><td><b>Sol 5.6 Max</b></td><td><a href="games/sol-5-6-max-axiom.html" target="_blank" rel="noopener">AXISONANCE</a></td><td class="mono">Codex</td><td class="mono">Max</td><td><span class="tag a">Axiom</span></td></tr>
-          <tr><td><b>Astra Max</b></td><td><a href="games/astra-max-axiom.html" target="_blank" rel="noopener">RIFT</a></td><td class="mono">Codex</td><td class="mono">Max</td><td><span class="tag a">Axiom</span></td></tr>
-          <tr><td><b>Astra Max</b></td><td><a href="games/astra-max-dogma.html" target="_blank" rel="noopener">FOLDLIGHT</a></td><td class="mono">Codex</td><td class="mono">Max</td><td><span class="tag d">Dogma</span></td></tr>
-          <tr><td><b>GPT 6 Pro</b></td><td><a href="games/gpt-6-pro.html" target="_blank" rel="noopener">AFTERLIGHT</a></td><td class="mono">ChatGPT (Pro)</td><td class="mono">—</td><td><span class="tag n"><span class="en">None</span><span class="vi">Không</span></span></td></tr>
-          <tr><td><b>Gemini 3.1 Pro</b></td><td><a href="games/gemini-3-1-pro.html" target="_blank" rel="noopener">Chrono Tether</a></td><td class="mono">Gemini</td><td class="mono">—</td><td><span class="tag n"><span class="en">None</span><span class="vi">Không</span></span></td></tr>
-          <tr><td><b>Gemini 3.8 Flash</b></td><td><a href="games/gemini-3-8-flash.html" target="_blank" rel="noopener">SINGULARIS</a></td><td class="mono">Gemini</td><td class="mono">—</td><td><span class="tag n"><span class="en">None</span><span class="vi">Không</span></span></td></tr>
-        </tbody>
-      </table>
-    </div>
+  <div class="hr" style="margin-bottom:20px">
+    <div class="eyebrow"><span class="en">THE ROSTER</span><span class="sep"> · </span><span class="vi">DANH SÁCH</span></div>
   </div>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr>
+          <th>MODEL</th>
+          <th>PLATFORM</th>
+          <th>EFFORT</th>
+          <th>SYSTEM</th>
+          <th>GAME</th>
+        </tr>
+      </thead>
+      <tbody id="rosterbody"></tbody>
+    </table>
+  </div>
+  <p class="rnote r-off"><span class="en">Game column hidden until you reveal the answers.</span><span class="sep"> · </span><span class="vi">Cột game được ẩn cho tới khi bạn tiết lộ đáp án.</span></p>
 </section>
 
 </main>
 
 <footer>
-  <div class="wrap foot">
-    <div>
-      <p class="en">Every game file is published exactly as the model produced it — not a single line was edited, reformatted or fixed by hand. What you play is what the model wrote.</p>
-      <p class="vi">Mọi file game đều được đăng đúng như model đã tạo ra — không một dòng nào được sửa, định dạng lại hay chỉnh tay. Những gì bạn chơi chính là những gì model đã viết.</p>
-    </div>
-    <div class="sig">
-      <span class="en">AI Arcade Lab · one brief, eight answers</span>
-      <span class="vi">AI Arcade Lab · một đề bài, tám câu trả lời</span>
-    </div>
+  <div class="in">
+    <p class="en">Every game file is published exactly as the model produced it — not a single line was edited, reformatted or fixed by hand. What you play is what the model wrote.</p>
+    <p class="vi">Mọi file game đều được đăng đúng như model đã tạo ra — không một dòng nào được sửa, định dạng lại hay chỉnh tay. Những gì bạn chơi chính là những gì model đã viết.</p>
+    <div class="footmark">AI ARCADE LAB<span style="color:var(--amber)"> ▪</span> <span class="en">ONE BRIEF · NINE RUNS</span><span class="sep"> — </span><span class="vi">MỘT ĐỀ BÀI · CHÍN LƯỢT CHẠY</span></div>
   </div>
 </footer>
 
@@ -683,69 +728,152 @@ footer{border-top:1px solid var(--line);padding:clamp(38px,6vw,58px) 0 clamp(46p
 (function(){
   "use strict";
   var root = document.documentElement;
+  var KEY = "aal-state-v2";
+
+  var GAMES = [
+    {id:"g1", num:"01", title:"UMBRA",         answer:"Fable 5.1 Max (Axiom)", sys:"axiom", file:"games/01-umbra.html"},
+    {id:"g2", num:"02", title:"THRUM",         answer:"Opus 5 Max",            sys:"axiom", file:"games/02-thrum.html"},
+    {id:"g3", num:"03", title:"Cloud Cover",   answer:"Fable 5.1 Max (Dogma)", sys:"dogma", file:"games/03-cloud-cover.html"},
+    {id:"g4", num:"04", title:"AXISONANCE",    answer:"Sol 5.6 Max",           sys:"axiom", file:"games/04-axisonance.html"},
+    {id:"g5", num:"05", title:"RIFT",          answer:"Astra Max (Axiom)",     sys:"axiom", file:"games/05-rift.html"},
+    {id:"g6", num:"06", title:"FOLDLIGHT",     answer:"Astra Max (Dogma)",     sys:"dogma", file:"games/06-foldlight.html"},
+    {id:"g7", num:"07", title:"AFTERLIGHT",    answer:"GPT 6 Pro",             sys:"none",  file:"games/07-afterlight.html"},
+    {id:"g8", num:"08", title:"Chrono Tether", answer:"Gemini 3.1 Pro",        sys:"none",  file:"games/08-chrono-tether.html"},
+    {id:"g9", num:"09", title:"SINGULARIS",    answer:"Gemini 3.8 Flash",      sys:"none",  file:"games/09-singularis.html"}
+  ];
+
+  var MODELS = ["Astra Max (Axiom)","Astra Max (Dogma)","Fable 5.1 Max (Axiom)","Fable 5.1 Max (Dogma)","GPT 6 Pro","Gemini 3.1 Pro","Gemini 3.8 Flash","Opus 5 Max","Sol 5.6 Max"];
+
+  var ROSTER = [
+    ["Astra Max","Codex","Max","■ Axiom","05 · RIFT"],
+    ["Astra Max","Codex","Max","○ Dogma","06 · FOLDLIGHT"],
+    ["Fable 5.1 Max","Claude Code","Max","■ Axiom","01 · UMBRA"],
+    ["Fable 5.1 Max","Claude Code","Max","○ Dogma","03 · Cloud Cover"],
+    ["GPT 6 Pro","ChatGPT (Pro)","—","— NONE","07 · AFTERLIGHT"],
+    ["Gemini 3.1 Pro","Gemini","—","— NONE","08 · Chrono Tether"],
+    ["Gemini 3.8 Flash","Gemini","—","— NONE","09 · SINGULARIS"],
+    ["Opus 5 Max","Claude Code","Max","■ Axiom","02 · THRUM"],
+    ["Sol 5.6 Max","Codex","Max","■ Axiom","04 · AXISONANCE"]
+  ];
+
+  var state = {lang:"both", revealed:false, guesses:{}, filter:"all"};
+  try{
+    var saved = JSON.parse(localStorage.getItem(KEY) || "null");
+    if(saved && typeof saved === "object"){
+      if(saved.lang === "en" || saved.lang === "vi" || saved.lang === "both") state.lang = saved.lang;
+      state.revealed = !!saved.revealed;
+      if(saved.guesses && typeof saved.guesses === "object") state.guesses = saved.guesses;
+    }
+  }catch(e){}
+
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify({lang:state.lang, revealed:state.revealed, guesses:state.guesses})); }catch(e){}
+  }
+  function t(en, vi){ return state.lang === "en" ? en : state.lang === "vi" ? vi : en + " · " + vi; }
 
   /* ---------- language ---------- */
-  function setLang(l){
-    if(l!=="vi") l="en";
-    root.setAttribute("data-lang", l);
-    root.setAttribute("lang", l);
-    var b = document.querySelectorAll("[data-set-lang]");
-    for(var i=0;i<b.length;i++){
-      b[i].setAttribute("aria-pressed", b[i].getAttribute("data-set-lang")===l ? "true" : "false");
-    }
-    try{ localStorage.setItem("lab-lang", l); }catch(e){}
-    updateCount();
+  function applyLang(){
+    root.setAttribute("data-lang", state.lang);
+    root.setAttribute("lang", state.lang === "vi" ? "vi" : "en");
+    var b = document.querySelectorAll("[data-lang-set]");
+    for(var i=0;i<b.length;i++) b[i].setAttribute("aria-pressed", b[i].getAttribute("data-lang-set") === state.lang ? "true" : "false");
   }
-  document.addEventListener("click", function(e){
-    var t = e.target.closest ? e.target.closest("[data-set-lang]") : null;
-    if(t) setLang(t.getAttribute("data-set-lang"));
-  });
-  var saved = null;
-  try{ saved = localStorage.getItem("lab-lang"); }catch(e){}
-  if(!saved && (navigator.language||"").toLowerCase().indexOf("vi")===0) saved = "vi";
-  if(saved) setLang(saved);
 
   /* ---------- filters ---------- */
   var cards = Array.prototype.slice.call(document.querySelectorAll(".card"));
-  var countEl = document.getElementById("count");
-  var current = "all";
-
-  function updateCount(){
-    if(!countEl) return;
-    var n = cards.filter(function(c){ return !c.classList.contains("hide"); }).length;
-    var vi = root.getAttribute("data-lang")==="vi";
-    countEl.textContent = vi ? ("Hiển thị " + n + "/" + cards.length) : ("Showing " + n + " of " + cards.length);
+  function applyFilter(){
+    var f = state.revealed ? state.filter : "all";
+    cards.forEach(function(c){ c.classList.toggle("hide", !(f === "all" || c.getAttribute("data-sys") === f)); });
+    var b = document.querySelectorAll("[data-filter]");
+    for(var i=0;i<b.length;i++) b[i].setAttribute("aria-pressed", b[i].getAttribute("data-filter") === f ? "true" : "false");
+    var shown = cards.filter(function(c){ return !c.classList.contains("hide"); }).length;
+    var el = document.getElementById("count");
+    if(el) el.textContent = t("Showing " + shown + " of 9", "Hiển thị " + shown + "/9");
   }
 
-  function applyFilter(f){
-    current = f;
-    cards.forEach(function(c){
-      var show = (f==="all") || (c.getAttribute("data-harness")===f);
-      c.classList.toggle("hide", !show);
+  /* ---------- guess rows ---------- */
+  var rowsEl = document.getElementById("guessrows");
+  function buildRows(){
+    rowsEl.textContent = "";
+    GAMES.forEach(function(g){
+      var row = document.createElement("div"); row.className = "grow";
+      var nm = document.createElement("span"); nm.className = "gname"; nm.textContent = g.num + " · " + g.title;
+      var sel = document.createElement("select");
+      sel.setAttribute("aria-label", "Model for " + g.title);
+      var o0 = document.createElement("option"); o0.value = ""; o0.textContent = t("— pick a model —", "— chọn model —");
+      sel.appendChild(o0);
+      MODELS.forEach(function(m){ var o = document.createElement("option"); o.value = m; o.textContent = m; sel.appendChild(o); });
+      sel.value = state.guesses[g.id] || "";
+      sel.disabled = state.revealed;
+      sel.addEventListener("change", function(){
+        if(state.revealed) return;
+        state.guesses[g.id] = sel.value;
+        save(); updateScore();
+      });
+      var mark = document.createElement("span"); mark.className = "gmark";
+      if(state.revealed){
+        var v = state.guesses[g.id] || "";
+        if(v === g.answer){ mark.className = "gmark ok"; mark.textContent = "✓ " + g.answer; }
+        else if(v){ mark.className = "gmark no"; mark.textContent = "✗ " + g.answer; }
+        else { mark.className = "gmark miss"; mark.textContent = "→ " + g.answer; }
+      }
+      row.appendChild(nm); row.appendChild(sel); row.appendChild(mark);
+      rowsEl.appendChild(row);
     });
-    var btns = document.querySelectorAll("[data-filter]");
-    for(var i=0;i<btns.length;i++){
-      btns[i].setAttribute("aria-pressed", btns[i].getAttribute("data-filter")===f ? "true" : "false");
+  }
+
+  function updateScore(){
+    var guessed = GAMES.filter(function(g){ return state.guesses[g.id]; }).length;
+    var right = GAMES.filter(function(g){ return state.guesses[g.id] === g.answer; }).length;
+    var el = document.getElementById("score");
+    if(!el) return;
+    if(state.revealed){
+      el.textContent = guessed ? t("You guessed " + right + " of 9 correctly.", "Bạn đoán đúng " + right + "/9.") : t("Answers revealed.", "Đã tiết lộ đáp án.");
+    } else {
+      el.textContent = guessed ? t(guessed + " of 9 guessed", "Đã đoán " + guessed + "/9") : "";
     }
-    updateCount();
   }
-  document.addEventListener("click", function(e){
-    var t = e.target.closest ? e.target.closest("[data-filter]") : null;
-    if(t) applyFilter(t.getAttribute("data-filter"));
-  });
-  updateCount();
 
-  /* ---------- surprise me ---------- */
-  var rnd = document.getElementById("randomBtn");
-  if(rnd){
-    rnd.addEventListener("click", function(){
-      var pool = cards.filter(function(c){ return !c.classList.contains("hide"); });
-      if(!pool.length) pool = cards;
-      var pick = pool[Math.floor(Math.random()*pool.length)];
-      var link = pick.querySelector("a.card-link");
-      if(link) window.open(link.getAttribute("href"), "_blank", "noopener");
+  /* ---------- roster ---------- */
+  var rbody = document.getElementById("rosterbody");
+  function buildRoster(){
+    rbody.textContent = "";
+    ROSTER.forEach(function(r){
+      var tr = document.createElement("tr");
+      [[r[0],"a"],[r[1],""],[r[2],""],[r[3],"a"],[state.revealed ? r[4] : "· · ·","b"]].forEach(function(c){
+        var td = document.createElement("td");
+        if(c[1]) td.className = c[1];
+        td.textContent = c[0];
+        tr.appendChild(td);
+      });
+      rbody.appendChild(tr);
     });
   }
+
+  /* ---------- render ---------- */
+  function render(){
+    applyLang();
+    root.setAttribute("data-revealed", state.revealed ? "true" : "false");
+    applyFilter();
+    buildRows();
+    buildRoster();
+    updateScore();
+  }
+
+  document.addEventListener("click", function(e){
+    var el = e.target.closest ? e.target.closest("[data-lang-set],[data-filter],#revealBtn,#resetBtn,#surprise") : null;
+    if(!el) return;
+    if(el.hasAttribute("data-lang-set")){ state.lang = el.getAttribute("data-lang-set"); save(); render(); return; }
+    if(el.hasAttribute("data-filter")){ state.filter = el.getAttribute("data-filter"); applyFilter(); return; }
+    if(el.id === "revealBtn"){ state.revealed = true; save(); render(); return; }
+    if(el.id === "resetBtn"){ state.revealed = false; state.guesses = {}; state.filter = "all"; save(); render(); return; }
+    if(el.id === "surprise"){
+      var g = GAMES[Math.floor(Math.random() * GAMES.length)];
+      window.open(g.file, "_blank", "noopener");
+    }
+  });
+
+  render();
 })();
 </script>
 </body>

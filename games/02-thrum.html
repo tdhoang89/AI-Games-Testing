@@ -1,0 +1,1410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="THRUM — an arcade game about wave propagation and rhythmic synchronisation.">
+<title>THRUM</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --ink:#e9edfb;
+    --dim:rgba(233,237,251,.42);
+    --dimmer:rgba(233,237,251,.20);
+    --warn:#ff5f7e;
+    --font:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  html,body{height:100%;background:#04050a;overflow:hidden}
+  body{
+    font-family:var(--font);color:var(--ink);
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+    overscroll-behavior:none;
+  }
+  canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:2}
+
+  #meterTrack{
+    position:absolute;top:0;left:0;right:0;height:3px;
+    background:rgba(255,255,255,.06);
+  }
+  #meterFill{
+    height:100%;width:100%;transform-origin:0 50%;
+    background:linear-gradient(90deg,#5FE9D0,#8AA6FF 45%,#F09BE0 100%);
+    box-shadow:0 0 14px rgba(138,166,255,.55);
+    transition:background .3s linear;
+  }
+  #meterTrack.low #meterFill{background:linear-gradient(90deg,#ff5f7e,#ff9a6b);box-shadow:0 0 18px rgba(255,95,126,.7)}
+
+  .lab{
+    font-size:10px;letter-spacing:.22em;font-weight:600;
+    color:var(--dimmer);text-transform:uppercase;
+  }
+  #topL{position:absolute;top:calc(18px + env(safe-area-inset-top,0px));left:calc(20px + env(safe-area-inset-left,0px))}
+  #score{
+    font-size:clamp(30px,6.4vw,50px);font-weight:800;line-height:.98;
+    letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+    margin-top:3px;text-shadow:0 0 26px rgba(138,166,255,.35);
+  }
+  #best{margin-top:5px;font-size:11px;letter-spacing:.16em;color:var(--dim);font-variant-numeric:tabular-nums;font-weight:600}
+
+  #topR{
+    position:absolute;top:calc(18px + env(safe-area-inset-top,0px));right:calc(20px + env(safe-area-inset-right,0px));
+    text-align:right;
+  }
+  #mult{
+    font-size:clamp(19px,3.6vw,28px);font-weight:800;letter-spacing:-.01em;
+    font-variant-numeric:tabular-nums;opacity:0;transition:opacity .25s;
+    color:#FFC98A;text-shadow:0 0 22px rgba(255,201,138,.5);
+  }
+  #mult.on{opacity:1}
+  #locked{margin-top:4px;font-size:10px;letter-spacing:.18em;color:var(--dimmer);font-weight:600}
+
+  #charges{
+    position:absolute;left:50%;transform:translateX(-50%);
+    bottom:calc(24px + env(safe-area-inset-bottom,0px));
+    display:flex;gap:9px;
+  }
+  #charges i{
+    display:block;width:30px;height:4px;border-radius:2px;
+    background:rgba(255,255,255,.10);overflow:hidden;position:relative;
+  }
+  #charges i::after{
+    content:"";position:absolute;inset:0;transform-origin:0 50%;transform:scaleX(var(--f,0));
+    background:#cfe0ff;box-shadow:0 0 10px rgba(207,224,255,.8);
+  }
+  #charges.deny{animation:deny .3s ease}
+  @keyframes deny{0%,100%{transform:translateX(-50%)}25%{transform:translateX(calc(-50% - 6px))}75%{transform:translateX(calc(-50% + 6px))}}
+
+  #hint{
+    position:absolute;left:50%;transform:translateX(-50%);
+    bottom:calc(52px + env(safe-area-inset-bottom,0px));
+    font-size:clamp(12px,2.6vw,14px);letter-spacing:.03em;color:var(--dim);
+    text-align:center;max-width:min(88vw,520px);line-height:1.5;
+    opacity:0;transition:opacity .45s;font-weight:500;
+  }
+  #hint.on{opacity:1}
+
+  #tools{
+    position:absolute;right:calc(16px + env(safe-area-inset-right,0px));
+    bottom:calc(16px + env(safe-area-inset-bottom,0px));
+    display:flex;gap:6px;pointer-events:auto;
+  }
+  .tbtn{
+    width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.03);color:var(--dim);
+    font:600 13px/1 var(--font);cursor:pointer;display:grid;place-items:center;
+    transition:color .2s,border-color .2s,background .2s;
+  }
+  .tbtn:hover{color:var(--ink);border-color:rgba(255,255,255,.24);background:rgba(255,255,255,.07)}
+  .tbtn.off{color:rgba(233,237,251,.18)}
+  .tbtn:focus-visible{outline:2px solid rgba(150,185,255,.85);outline-offset:3px;color:var(--ink)}
+
+  /* ---------- overlays ---------- */
+  .screen{
+    position:fixed;inset:0;z-index:3;display:flex;
+    padding:24px;text-align:center;
+    overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;
+    background:radial-gradient(ellipse at 50% 45%,rgba(4,5,10,.55) 0%,rgba(4,5,10,.90) 55%,rgba(4,5,10,.97) 100%);
+    opacity:0;pointer-events:none;transition:opacity .4s ease;
+  }
+  .screen.on{opacity:1;pointer-events:auto}
+  .wrap{max-width:560px;width:100%;margin:auto}   /* centres, yet still scrolls when tall */
+
+  #wordmark{
+    font-size:clamp(52px,15vw,116px);font-weight:800;letter-spacing:.10em;
+    line-height:1;margin-left:.10em;
+    background:linear-gradient(96deg,#5FE9D0,#8AA6FF 38%,#F09BE0 70%,#FFC07A 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 44px rgba(138,166,255,.30));
+  }
+  #tagline{
+    margin-top:14px;font-size:clamp(12.5px,2.9vw,15px);color:var(--dim);
+    letter-spacing:.05em;line-height:1.65;
+  }
+  .cta{
+    margin-top:34px;font-size:11px;letter-spacing:.30em;font-weight:700;
+    color:var(--ink);text-transform:uppercase;
+    animation:breathe 2.6s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{opacity:.35}50%{opacity:1}}
+
+  .rules{
+    margin:32px auto 0;max-width:430px;text-align:left;
+    display:grid;gap:11px;
+  }
+  .rule{display:grid;grid-template-columns:22px 1fr;gap:13px;align-items:start;
+        font-size:13.5px;line-height:1.55;color:rgba(233,237,251,.72)}
+  .rule b{color:var(--ink);font-weight:650}
+  .rn{
+    font-size:10px;font-weight:700;color:var(--dimmer);letter-spacing:.1em;
+    padding-top:3px;font-variant-numeric:tabular-nums;
+  }
+
+  #overTitle{font-size:11px;letter-spacing:.34em;font-weight:700;color:var(--warn);text-transform:uppercase}
+  #overScore{
+    font-size:clamp(56px,15vw,104px);font-weight:800;line-height:1;margin-top:12px;
+    letter-spacing:-.03em;font-variant-numeric:tabular-nums;
+    text-shadow:0 0 50px rgba(138,166,255,.28);
+  }
+  #overBest{margin-top:9px;font-size:12px;letter-spacing:.16em;color:var(--dim);font-weight:600;font-variant-numeric:tabular-nums}
+  #newBest{
+    margin-top:9px;font-size:11px;letter-spacing:.28em;font-weight:800;text-transform:uppercase;
+    background:linear-gradient(96deg,#5FE9D0,#FFC07A);-webkit-background-clip:text;background-clip:text;color:transparent;
+    display:none;
+  }
+  #newBest.on{display:block}
+  #stats{
+    margin-top:30px;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;
+    border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07);
+    padding:16px 0;
+  }
+  #stats div{display:grid;gap:5px}
+  #stats .v{font-size:17px;font-weight:750;font-variant-numeric:tabular-nums}
+
+  #pauseTitle{font-size:11px;letter-spacing:.34em;font-weight:700;color:var(--dim);text-transform:uppercase}
+
+  .kbd{
+    display:inline-block;padding:1px 5px;border-radius:4px;
+    border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);
+    font-size:10.5px;font-weight:600;letter-spacing:.04em;color:rgba(233,237,251,.8);
+  }
+  #foot{margin-top:26px;font-size:10.5px;letter-spacing:.1em;color:var(--dimmer);line-height:2}
+
+  @media (max-width:430px){
+    .rule{font-size:12.5px}
+    #charges i{width:26px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .cta{animation:none;opacity:.85}
+    #charges.deny{animation:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="cv" aria-label="THRUM game field"></canvas>
+
+<div id="hud">
+  <div id="meterTrack"><div id="meterFill"></div></div>
+  <div id="topL">
+    <div class="lab">Score</div>
+    <div id="score">0</div>
+    <div id="best">BEST 0</div>
+  </div>
+  <div id="topR">
+    <div id="mult">&times;1.0</div>
+    <div id="locked"></div>
+  </div>
+  <div id="charges"><i></i><i></i><i></i></div>
+  <div id="hint"></div>
+  <div id="tools">
+    <button class="tbtn" id="bSound" title="Sound (M)" aria-label="Toggle sound">&#9834;</button>
+    <button class="tbtn" id="bHelp" title="How to play (H)" aria-label="How to play">?</button>
+  </div>
+</div>
+
+<div class="screen on" id="scTitle">
+  <div class="wrap">
+    <div id="wordmark">THRUM</div>
+    <div id="tagline">
+      Every node keeps its own beat.<br>
+      Send a wave. Make them beat as one.
+    </div>
+    <div class="cta" id="titleCta">Click to begin</div>
+    <div id="foot">
+      <span class="kbd">&larr;&uarr;&darr;&rarr;</span> or <span class="kbd">WASD</span> aim &nbsp;&middot;&nbsp; <span class="kbd">Space</span> release<br>
+      <span class="kbd">H</span> how to play &nbsp;&middot;&nbsp; <span class="kbd">M</span> sound &nbsp;&middot;&nbsp; <span class="kbd">P</span> pause &nbsp;&middot;&nbsp; <span class="kbd">R</span> retry
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scHelp">
+  <div class="wrap">
+    <div class="lab" style="letter-spacing:.34em">How to play</div>
+    <div class="rules">
+      <div class="rule"><span class="rn">01</span><span>Each node pulses at <b>its own tempo</b>. The sweeping arc shows when it fires next.</span></div>
+      <div class="rule"><span class="rn">02</span><span>Click to release a <b>wave</b>. Any node the wavefront touches <b>restarts its pulse</b> from that instant.</span></div>
+      <div class="rule"><span class="rn">03</span><span>Two or more nodes firing <b>at the same moment</b> is a chord. Bigger and tighter chords score far more.</span></div>
+      <div class="rule"><span class="rn">04</span><span>The wave <b>travels</b>. Distant nodes reset later than near ones — aim so the delay lands them together.</span></div>
+      <div class="rule"><span class="rn">05</span><span>Nodes left in sync stay <b>linked</b> and keep firing on their own, with no further input.</span></div>
+      <div class="rule"><span class="rn">06</span><span>Every repeat raises that set's <b>sustain</b>. A machine left to run is worth far more than a fresh hit.</span></div>
+      <div class="rule"><span class="rn">07</span><span>A wave <b>resets the sustain</b> of every node it touches. Growing a machine costs its streak &mdash; aim so it doesn't.</span></div>
+      <div class="rule"><span class="rn">08</span><span>Resonance drains faster and faster. Only chords refill it.</span></div>
+    </div>
+    <div class="cta" style="margin-top:30px">Click to close</div>
+  </div>
+</div>
+
+<div class="screen" id="scPause">
+  <div class="wrap">
+    <div id="pauseTitle">Paused</div>
+    <div class="cta" style="margin-top:18px">Click to resume</div>
+  </div>
+</div>
+
+<div class="screen" id="scOver">
+  <div class="wrap">
+    <div id="overTitle">Resonance lost</div>
+    <div id="overScore">0</div>
+    <div id="overBest">BEST 0</div>
+    <div id="newBest">New best</div>
+    <div id="stats">
+      <div><span class="lab">Chords</span><span class="v" id="stChords">0</span></div>
+      <div><span class="lab">Biggest</span><span class="v" id="stBig">0</span></div>
+      <div><span class="lab">Sustain</span><span class="v" id="stSus">0</span></div>
+      <div><span class="lab">Time</span><span class="v" id="stTime">0s</span></div>
+    </div>
+    <div class="cta" style="margin-top:30px">Click to play again</div>
+  </div>
+</div>
+
+<noscript><p style="padding:24px">THRUM needs JavaScript.</p></noscript>
+
+<script>
+(() => {
+'use strict';
+
+/* ============================================================
+   THRUM
+   A node pulses on its own period. A wave you release travels
+   outward at finite speed and resets the phase of every node its
+   front crosses. Distance therefore *is* delay — the geometry of
+   where you click is your timing instrument.
+   ============================================================ */
+
+// ---------- configuration ----------
+const CFG = {
+  UNIT:          0.35,          // seconds; every node period is UNIT * k
+  KS:            [2, 3, 4, 6],  // integer ratios -> guaranteed re-coincidence
+  CHORD_WINDOW:  0.100,         // s; flashes inside this window form a chord
+  TIGHT:         0.030,         // s; spread under this counts as a pure chord
+  WAVE_SPEED:    560,           // px/s at scale 1
+  WAVE_MAX:      340,           // px at scale 1
+  MAX_CHARGES:   3,
+  RECHARGE:      1.15,          // s per charge
+  MAX_NODES:     13,
+  DRAIN_BASE:    2.2,           // %/s
+  DRAIN_RAMP:    0.100,         // %/s per second elapsed
+  DRAIN_CAP:     40.0,          // above any achievable refill rate, so runs always end
+  GRACE:         6.0,           // s of no drain at the start of a run
+  COMBO_HOLD:    3.5,           // s before the multiplier lapses
+  REST_CAP:      12.0,          // s of neglect for a full freshness bonus
+  SUSTAIN_CAP:   12,            // ceiling on a machine's consecutive-firing streak
+};
+
+const COL = {
+  2: [ 95,233,208],
+  3: [138,166,255],
+  6: [255,192,122],
+  4: [240,155,224],
+};
+const WAVE_RGB = [222,234,255];
+const FONT = 'ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
+
+// ---------- small utilities ----------
+const TAU = Math.PI * 2;
+const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
+const lerp  = (a,b,t) => a + (b - a) * t;
+const rand  = (a,b) => a + Math.random() * (b - a);
+const pick  = a => a[(Math.random() * a.length) | 0];
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const rgba = (c,a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+const LS = {
+  get(k, d){ try { const v = localStorage.getItem('thrum.' + k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem('thrum.' + k, JSON.stringify(v)); } catch(e){} }
+};
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Keyboard aiming. Without this the game is unplayable without a pointer:
+// Space releases a wave from the aim point, and the aim point only ever moved
+// with a mouse.
+const AIM_KEYS = new Set(['arrowleft','arrowright','arrowup','arrowdown','a','d','w','s']);
+const held = new Set();
+
+// ---------- audio ----------
+// Everything is synthesised: no files, no network. Node pitches are a
+// stack of octaves and fifths (harmonics 2:3:4:6 of a 55 Hz root), so any
+// set of nodes firing together is consonant by construction.
+const Audio_ = {
+  ctx: null, master: null, wet: null, noise: null,
+  on: LS.get('sound', true), voices: 0, ready: false,
+
+  init(){
+    if (this.ready) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { this.on = false; return; }
+    try { this.ctx = new AC(); } catch(e){ this.on = false; return; }
+    const c = this.ctx;
+
+    this.master = c.createGain();
+    this.master.gain.value = 0.0;
+
+    const comp = c.createDynamicsCompressor();
+    comp.threshold.value = -16; comp.knee.value = 22;
+    comp.ratio.value = 5; comp.attack.value = 0.004; comp.release.value = 0.22;
+    this.master.connect(comp); comp.connect(c.destination);
+
+    // cheap lush space: two cross-fed, low-passed delays
+    this.wet = c.createGain(); this.wet.gain.value = 0.34;
+    const d1 = c.createDelay(1), d2 = c.createDelay(1);
+    d1.delayTime.value = 0.157; d2.delayTime.value = 0.231;
+    const fb1 = c.createGain(), fb2 = c.createGain();
+    fb1.gain.value = 0.46; fb2.gain.value = 0.42;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600;
+    this.wet.connect(d1); this.wet.connect(d2);
+    d1.connect(fb1); fb1.connect(lp); lp.connect(d2);
+    d2.connect(fb2); fb2.connect(d1);
+    d1.connect(this.master); d2.connect(this.master);
+
+    // one shared noise buffer for wave whooshes
+    const n = c.createBuffer(1, c.sampleRate * 0.7, c.sampleRate);
+    const dat = n.getChannelData(0);
+    for (let i = 0; i < dat.length; i++) dat[i] = Math.random() * 2 - 1;
+    this.noise = n;
+
+    this.ready = true;
+    this.applyVolume();
+  },
+
+  applyVolume(){
+    if (!this.ready) return;
+    const t = this.ctx.currentTime;
+    this.master.gain.cancelScheduledValues(t);
+    this.master.gain.setTargetAtTime(this.on ? 0.9 : 0.0, t, 0.05);
+  },
+
+  resume(){ if (this.ready && this.ctx.state === 'suspended') this.ctx.resume(); },
+  toggle(){ this.on = !this.on; LS.set('sound', this.on); this.init(); this.applyVolume(); return this.on; },
+
+  // struck-bowl voice
+  bell(freq, vol = 0.5, dur = 1.5){
+    if (!this.ready || !this.on || this.voices > 22) return;
+    const c = this.ctx, t = c.currentTime;
+    this.voices++;
+    setTimeout(() => this.voices--, dur * 1000);
+
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(Math.min(freq * 9, 9000), t);
+    lp.frequency.exponentialRampToValueAtTime(Math.max(freq * 1.6, 200), t + dur * 0.7);
+
+    const o1 = c.createOscillator(); o1.type = 'sine';     o1.frequency.value = freq;
+    const o2 = c.createOscillator(); o2.type = 'triangle'; o2.frequency.value = freq * 2.02;
+    const g2 = c.createGain(); g2.gain.value = 0.20;
+
+    o1.connect(lp); o2.connect(g2); g2.connect(lp);
+    lp.connect(g); g.connect(this.master); g.connect(this.wet);
+    o1.start(t); o2.start(t);
+    o1.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+  },
+
+  whoosh(){
+    if (!this.ready || !this.on) return;
+    const c = this.ctx, t = c.currentTime;
+    const src = c.createBufferSource(); src.buffer = this.noise;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.4;
+    bp.frequency.setValueAtTime(220, t);
+    bp.frequency.exponentialRampToValueAtTime(2400, t + 0.42);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.16, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.48);
+    src.connect(bp); bp.connect(g); g.connect(this.master); g.connect(this.wet);
+    src.start(t); src.stop(t + 0.55);
+  },
+
+  thump(n){
+    if (!this.ready || !this.on) return;
+    const c = this.ctx, t = c.currentTime;
+    const o = c.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(120, t);
+    o.frequency.exponentialRampToValueAtTime(38, t + 0.30);
+    const g = c.createGain();
+    const v = Math.min(0.14 + n * 0.05, 0.42);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(v, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+    o.connect(g); g.connect(this.master);
+    o.start(t); o.stop(t + 0.45);
+  },
+
+  blip(freq, vol = 0.10){
+    if (!this.ready || !this.on) return;
+    const c = this.ctx, t = c.currentTime;
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    o.connect(g); g.connect(this.master);
+    o.start(t); o.stop(t + 0.16);
+  }
+};
+
+// ---------- canvas ----------
+const cv  = document.getElementById('cv');
+const ctx = cv.getContext('2d', { alpha: false });
+let W = 0, H = 0, DPR = 1, S = 1;
+
+function resize(){
+  const ow = W, oh = H;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width  = Math.round(W * DPR);
+  cv.height = Math.round(H * DPR);
+  S = clamp(Math.min(W, H) / 820, 0.62, 1.5);
+  if (ow && oh){                        // keep the field's composition on resize
+    const sx = W / ow, sy = H / oh;
+    for (const n of G.nodes){ n.x *= sx; n.y *= sy; }
+  } else if (W && H && G.nodes.length){ // first real measurement after a 0-sized layout
+    const m = 78 * S;
+    for (const n of G.nodes){ n.x = rand(m, W - m); n.y = rand(m + 26, H - m - 20); }
+  }
+  buildGrid();
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+
+// background lattice — it is displaced by every passing wavefront, which is
+// what makes the finite speed of the wave legible at a glance
+let grid = [], gridStep = 0;
+function buildGrid(){
+  gridStep = 36 * S;
+  grid = [];
+  const cols = Math.ceil(W / gridStep) + 1, rows = Math.ceil(H / gridStep) + 1;
+  const ox = (W - (cols - 1) * gridStep) / 2, oy = (H - (rows - 1) * gridStep) / 2;
+  for (let j = 0; j < rows; j++)
+    for (let i = 0; i < cols; i++)
+      grid.push({ x: ox + i * gridStep + (j % 2 ? gridStep / 2 : 0), y: oy + j * gridStep });
+}
+
+// ---------- game state ----------
+const G = {
+  mode: 'title',            // title | play | pause | over | help
+  t: 0, run: 0,
+  nodes: [], waves: [], parts: [], pops: [], links: [], ripplesFX: [],
+  pending: [],              // flashes awaiting chord resolution
+  score: 0, best: LS.get('best', 0),
+  meter: 100, combo: 0, comboT: 0,
+  charges: CFG.MAX_CHARGES, chargeT: 0,
+  shake: 0, hitstop: 0, flashWhite: 0,
+  spawnT: 0, spawnEvery: 15,
+  stats: { chords: 0, big: 0, waves: 0, hits: 0, sus: 0 },
+  aiT: 0, hintIdx: 0, hintShown: '',
+  mouse: { x: -999, y: -999, has: false },
+  plays: LS.get('plays', 0),
+};
+
+const el = {
+  score: document.getElementById('score'),
+  best:  document.getElementById('best'),
+  mult:  document.getElementById('mult'),
+  locked:document.getElementById('locked'),
+  meterT:document.getElementById('meterTrack'),
+  meterF:document.getElementById('meterFill'),
+  charges: document.getElementById('charges'),
+  chargeEls: [...document.querySelectorAll('#charges i')],
+  hint:  document.getElementById('hint'),
+  scTitle: document.getElementById('scTitle'),
+  scHelp:  document.getElementById('scHelp'),
+  scPause: document.getElementById('scPause'),
+  scOver:  document.getElementById('scOver'),
+  overScore: document.getElementById('overScore'),
+  overBest:  document.getElementById('overBest'),
+  newBest:   document.getElementById('newBest'),
+  stChords:  document.getElementById('stChords'),
+  stBig:     document.getElementById('stBig'),
+  stSus:     document.getElementById('stSus'),
+  stTime:    document.getElementById('stTime'),
+  titleCta:  document.getElementById('titleCta'),
+  bSound: document.getElementById('bSound'),
+  bHelp:  document.getElementById('bHelp'),
+};
+
+// ---------- entities ----------
+let nodeSeq = 0;
+function makeNode(k, x, y){
+  const oct = Math.random() < 0.34 ? 2 : 1;
+  return {
+    id: ++nodeSeq, k,
+    period: CFG.UNIT * k,
+    phase: Math.random(),
+    x, y,
+    vx: rand(-1,1) * 13 * S, vy: rand(-1,1) * 13 * S,
+    col: COL[k],
+    freq: 55 * (12 / k) * oct,
+    flash: 0,          // 0..1 decay after firing
+    rest: 0,           // seconds since last chord
+    sustain: -1,       // -1 not yet in a machine · 0 broken by a wave · n = streak
+    born: 0,           // spawn-in animation
+    group: -1,
+  };
+}
+
+// Integer-ratio periods mean any alignment is permanent: two nodes that happen
+// to spawn in tune would chord forever with no input, and the game would play
+// itself. So a new node is given the phase that stays furthest from every
+// existing node's firing lattice over the next few seconds. With a crowded
+// field the firing timeline is denser than the chord window, so this reduces
+// accidental locks rather than forbidding them; the sustain rule above is what
+// keeps a stray coincidence from costing the player anything.
+function loosePhase(period){
+  const HORIZON = 6.5;
+  const others = [];
+  for (const o of G.nodes)
+    for (let g = (1 - o.phase) * o.period; g < HORIZON; g += o.period) others.push(g);
+  if (!others.length) return Math.random();
+
+  let bestPh = Math.random(), bestGap = -1;
+  for (let c = 0; c < 48; c++){
+    const ph = c / 48;
+    let gap = Infinity;
+    for (let f = (1 - ph) * period; f < HORIZON; f += period)
+      for (let i = 0; i < others.length; i++){
+        const dd = Math.abs(f - others[i]);
+        if (dd < gap) gap = dd;
+      }
+    if (gap > bestGap){ bestGap = gap; bestPh = ph; }
+  }
+  return bestPh;
+}
+
+function freeSpot(){
+  const m = 78 * S;
+  let bx = W / 2, by = H / 2, bd = -1;
+  for (let a = 0; a < 40; a++){
+    const x = rand(m, W - m), y = rand(m + 26, H - m - 20);
+    let d = 1e9;
+    for (const n of G.nodes) d = Math.min(d, Math.hypot(n.x - x, n.y - y));
+    if (!G.nodes.length) d = 1e9;
+    if (d > bd){ bd = d; bx = x; by = y; }
+    if (bd > 150 * S) break;
+  }
+  return { x: bx, y: by };
+}
+
+function unlockedKs(){
+  const t = G.run;
+  if (t < 22) return [4];
+  if (t < 48) return [4, 6];
+  if (t < 78) return [4, 6, 3];
+  return [4, 6, 3, 2];
+}
+
+function spawnNode(k){
+  if (G.nodes.length >= CFG.MAX_NODES) return;
+  const p = freeSpot();
+  const n = makeNode(k || pick(unlockedKs()), p.x, p.y);
+  n.phase = loosePhase(n.period);   // arrives out of tune; the player must integrate it
+  n.born = 1;
+  G.nodes.push(n);
+  Audio_.blip(n.freq * 2, 0.07);
+}
+
+function makeWave(x, y){
+  return { x, y, r: 0, pr: 0, max: CFG.WAVE_MAX * S, hit: new Set(), life: 1 };
+}
+
+function burst(x, y, col, n, power){
+  if (REDUCED) n = Math.min(n, 6);
+  for (let i = 0; i < n; i++){
+    const a = Math.random() * TAU, sp = rand(0.35, 1) * power * S;
+    G.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+                   life: 1, decay: rand(0.9, 1.9), col, size: rand(1.1, 2.9) * S });
+  }
+}
+
+// ---------- flashes & chords ----------
+function emitFlash(n, t){
+  n.flash = 1;
+  G.pending.push({ n, t });
+  Audio_.bell(n.freq, 0.30, 1.1 + n.k * 0.12);
+  G.ripplesFX.push({ x: n.x, y: n.y, t0: G.t, amp: 4.5, speed: 400 * S, width: 40 * S, life: 0.55 });
+}
+
+function resolveChords(){
+  if (!G.pending.length) return;
+  G.pending.sort((a, b) => a.t - b.t);
+  while (G.pending.length && G.t - G.pending[0].t >= CFG.CHORD_WINDOW){
+    const t0 = G.pending[0].t;
+    let i = 0;
+    while (i < G.pending.length && G.pending[i].t <= t0 + CFG.CHORD_WINDOW) i++;
+    const group = G.pending.splice(0, i);
+
+    const seen = new Map();
+    for (const f of group) if (!seen.has(f.n.id)) seen.set(f.n.id, f);
+    const uniq = [...seen.values()];
+    if (uniq.length >= 2) scoreChord(uniq);
+  }
+}
+
+function scoreChord(fs){
+  const n = fs.length;
+  let lo = Infinity, hi = -Infinity, cx = 0, cy = 0, fresh = 0;
+  for (const f of fs){
+    lo = Math.min(lo, f.t); hi = Math.max(hi, f.t);
+    cx += f.n.x; cy += f.n.y;
+    fresh += 1 + (Math.min(f.n.rest, CFG.REST_CAP) / CFG.REST_CAP) * 1.2;
+    f.n.rest = 0;
+  }
+  cx /= n; cy /= n;
+  const spread = hi - lo;
+  const tight  = clamp(1 - spread / CFG.CHORD_WINDOW, 0, 1);
+  const pure   = spread <= CFG.TIGHT;
+
+  // Sustain is the heart of the game. A set that keeps firing on its own earns
+  // more every repeat; any wave that touches a member knocks it back to zero.
+  // So a click is priced by the consequence it leaves behind, not by what it
+  // triggers on contact — and growing a running machine genuinely costs you.
+  // Take the streak of the weakest *established* member. A node that has never
+  // been in a machine (-1) is ignored here and simply adopts the result, so a
+  // freshly spawned node drifting into an existing set cannot wipe its streak;
+  // only a wave, which sets sustain to 0, carries that cost.
+  let sus = Infinity;
+  for (const f of fs) if (f.n.sustain >= 0) sus = Math.min(sus, f.n.sustain);
+  if (sus === Infinity) sus = 0;
+  sus = Math.min(sus + 1, CFG.SUSTAIN_CAP);
+  for (const f of fs) f.n.sustain = sus;
+  const sMult = Math.min(1 + (sus - 1) * 0.45, 6);   // reaches its ceiling at SUSTAIN_CAP
+
+  const scoring = G.mode === 'play';   // attract mode may sound and sparkle, never score
+  if (scoring){ G.combo++; G.comboT = CFG.COMBO_HOLD; }
+  const cMult = Math.min(1 + G.combo * 0.12, 5);
+
+  const gain = Math.round(14 * Math.pow(n, 1.7) * (fresh / n) * (1 + 1.1 * tight) * cMult * sMult);
+  if (scoring){
+    G.score += gain;
+    G.stats.sus = Math.max(G.stats.sus, sus);
+    G.meter = clamp(G.meter + (1.7 * n + 2.0 * tight + (n >= 4 ? 3 : 0)), 0, 100);
+    G.stats.chords++;
+    G.stats.big = Math.max(G.stats.big, n);
+  }
+
+  // feedback
+  const col = fs[0].n.col;
+  G.pops.push({ x: cx, y: cy, vy: -34 * S, life: 1,
+                txt: '+' + gain,
+                sub: sus >= 2 ? '×' + sus + ' SUSTAIN' : (pure ? 'PURE' : (n >= 3 ? n + ' NODES' : '')),
+                size: (17 + n * 3.4) * S, col });
+  burst(cx, cy, col, 10 + n * 7, 90 + n * 26);
+  for (const f of fs) burst(f.n.x, f.n.y, f.n.col, 6 + n * 2, 70 + n * 12);
+
+  G.links.push({ pts: fs.map(f => ({ x: f.n.x, y: f.n.y })), life: 1, col });
+  G.shake = Math.min(G.shake + 1.6 + n * 1.5, 16);
+  G.ripplesFX.push({ x: cx, y: cy, t0: G.t, amp: 7 + n * 2.2, speed: 620 * S, width: 66 * S, life: 0.9 });
+
+  Audio_.thump(n);
+  if (n >= 4 && !REDUCED){
+    G.hitstop = Math.min(0.055 + n * 0.016, 0.16);
+    G.flashWhite = Math.min(0.10 + n * 0.024, 0.28);
+  }
+}
+
+// ---------- player action ----------
+function release(x, y){
+  if (G.mode !== 'play') return;
+  if (G.charges < 1){
+    el.charges.classList.remove('deny'); void el.charges.offsetWidth;
+    el.charges.classList.add('deny');
+    Audio_.blip(90, 0.06);
+    return;
+  }
+  G.charges--;
+  G.stats.waves++;
+  G.waves.push(makeWave(x, y));
+  Audio_.whoosh();
+}
+
+// ---------- run control ----------
+function reset(full){
+  G.nodes.length = 0; G.waves.length = 0; G.parts.length = 0;
+  G.pops.length = 0; G.links.length = 0; G.pending.length = 0; G.ripplesFX.length = 0;
+  G.score = 0; G.meter = 100; G.combo = 0; G.comboT = 0; G.run = 0;
+  G.charges = CFG.MAX_CHARGES; G.chargeT = 0;
+  G.shake = 0; G.hitstop = 0; G.flashWhite = 0;
+  G.spawnT = 14; G.spawnEvery = 15;
+  G.stats = { chords: 0, big: 0, waves: 0, hits: 0, sus: 0 };
+  G.hintIdx = 0; G.hintShown = '';
+
+  const count = full ? 3 : 5;
+  for (let i = 0; i < count; i++) spawnNode(full ? 4 : pick([4, 4, 6, 3]));
+  for (const n of G.nodes) n.born = 0;
+}
+
+function startRun(){
+  Audio_.init(); Audio_.resume();
+  reset(true);
+  G.mode = 'play';
+  G.plays++; LS.set('plays', G.plays);
+  show(null);
+  Audio_.blip(440, 0.10);
+}
+
+function gameOver(){
+  G.mode = 'over';
+  const nb = G.score > G.best;
+  if (nb){ G.best = G.score; LS.set('best', G.best); }
+  el.overScore.textContent = G.score.toLocaleString();
+  el.overBest.textContent  = 'BEST ' + G.best.toLocaleString();
+  el.newBest.classList.toggle('on', nb);
+  el.stChords.textContent = G.stats.chords;
+  el.stBig.textContent    = G.stats.big || '—';
+  el.stSus.textContent    = G.stats.sus ? '×' + G.stats.sus : '—';
+  el.stTime.textContent   = Math.floor(G.run) + 's';
+  show(el.scOver);
+  Audio_.bell(110, 0.34, 2.6); Audio_.bell(146.6, 0.22, 2.4);
+}
+
+function show(screen){
+  for (const s of [el.scTitle, el.scHelp, el.scPause, el.scOver]) s.classList.toggle('on', s === screen);
+}
+
+// ---------- hints ----------
+const HINTS = [
+  { t: 'Click anywhere to release a wave',                                  ok: () => G.stats.waves > 0 },
+  { t: 'The wavefront restarts the pulse of every node it touches',         ok: () => G.stats.hits  > 0 },
+  { t: 'Now make two nodes fire at the same moment',                        ok: () => G.stats.chords > 0 },
+  { t: 'The wave travels — far nodes reset later. That delay is your aim.', ok: () => G.stats.chords >= 3 },
+  { t: 'Nodes left in sync stay linked and keep firing on their own',       ok: () => G.stats.chords >= 7 },
+  { t: 'Each repeat raises that set’s sustain — let a machine run',         ok: () => G.stats.sus  >= 3 },
+  { t: 'A wave resets the sustain of whatever it touches. Aim around it.',  ok: () => G.stats.sus  >= 5 },
+];
+
+function updateHint(){
+  if (G.plays > 3 || G.mode !== 'play'){ el.hint.classList.remove('on'); return; }
+  while (G.hintIdx < HINTS.length && HINTS[G.hintIdx].ok()) G.hintIdx++;
+  if (G.hintIdx >= HINTS.length){ el.hint.classList.remove('on'); return; }
+  const t = HINTS[G.hintIdx].t;
+  if (t !== G.hintShown){ G.hintShown = t; el.hint.textContent = t; }
+  el.hint.classList.add('on');
+}
+
+// ---------- simulation ----------
+function step(dt){
+  G.t += dt;
+  const playing = G.mode === 'play';
+  const live    = playing || G.mode === 'title';
+  if (playing) G.run += dt;
+
+  // charges
+  if (playing && G.charges < CFG.MAX_CHARGES){
+    G.chargeT += dt;
+    while (G.chargeT >= CFG.RECHARGE && G.charges < CFG.MAX_CHARGES){
+      G.chargeT -= CFG.RECHARGE; G.charges++;
+    }
+  } else if (G.charges >= CFG.MAX_CHARGES) G.chargeT = 0;
+
+  // keyboard reticle
+  if (playing){
+    let kx = 0, ky = 0;
+    if (held.has('arrowleft')  || held.has('a')) kx--;
+    if (held.has('arrowright') || held.has('d')) kx++;
+    if (held.has('arrowup')    || held.has('w')) ky--;
+    if (held.has('arrowdown')  || held.has('s')) ky++;
+    if (kx || ky){
+      if (!G.mouse.has){ G.mouse.x = W / 2; G.mouse.y = H / 2; G.mouse.has = true; }
+      const sp = 640 * S * dt / Math.hypot(kx, ky);
+      G.mouse.x = clamp(G.mouse.x + kx * sp, 0, W);
+      G.mouse.y = clamp(G.mouse.y + ky * sp, 0, H);
+    }
+  }
+
+  // Pause, help and game over freeze the world outright: no node advances, no
+  // wave travels, no chord resolves. Only a live run and the title screen's
+  // attract mode simulate. Without this, a locked machine keeps firing behind
+  // the pause overlay — scoring, refilling the meter and holding the combo —
+  // which would make pausing strictly better than playing.
+  if (live){
+    // nodes: drift + phase
+    for (const n of G.nodes){
+      if (n.born > 0) n.born = Math.max(0, n.born - dt * 1.7);
+      const m = 54 * S;
+      n.x += n.vx * dt; n.y += n.vy * dt;
+      if (n.x < m){ n.x = m; n.vx = Math.abs(n.vx); }
+      if (n.x > W - m){ n.x = W - m; n.vx = -Math.abs(n.vx); }
+      if (n.y < m + 22){ n.y = m + 22; n.vy = Math.abs(n.vy); }
+      if (n.y > H - m - 26){ n.y = H - m - 26; n.vy = -Math.abs(n.vy); }
+
+      n.rest += dt;
+      n.flash = Math.max(0, n.flash - dt * 3.0);
+
+      n.phase += dt / n.period;
+      while (n.phase >= 1){
+        n.phase -= 1;
+        emitFlash(n, G.t - n.phase * n.period);   // sub-frame accurate firing time
+      }
+    }
+
+    // waves: expand, cross nodes, reset their phase at the exact crossing time
+    for (let i = G.waves.length - 1; i >= 0; i--){
+      const w = G.waves[i];
+      w.pr = w.r;
+      w.r += CFG.WAVE_SPEED * S * dt;
+      for (const n of G.nodes){
+        if (w.hit.has(n.id)) continue;
+        const d = Math.hypot(n.x - w.x, n.y - w.y);
+        if (d > w.max) continue;
+        // Slack on the trailing edge: nodes drift between frames, so one moving
+      // inward could otherwise cross the annulus without ever being tested.
+      if (d >= w.pr - 3 * S && d <= w.r){
+          w.hit.add(n.id);
+          n.sustain = 0;              // touching a node costs its machine's streak
+          const tHit = G.t - (w.r - d) / (CFG.WAVE_SPEED * S);
+          n.phase = clamp((G.t - tHit) / n.period, 0, 0.999);
+          emitFlash(n, tHit);
+          G.stats.hits++;
+          burst(n.x, n.y, n.col, 5, 55);
+        }
+      }
+      w.life = 1 - w.r / w.max;
+      if (w.r >= w.max) G.waves.splice(i, 1);
+    }
+
+    resolveChords();
+  }
+
+  // phase-locked groups: nodes whose *next* firing coincides
+  const order = G.nodes.slice().sort((a, b) => nextAt(a) - nextAt(b));
+  let gi = -1, gStart = -Infinity;
+  for (const n of order){
+    const t = nextAt(n);
+    if (t - gStart > CFG.CHORD_WINDOW){ gi++; gStart = t; }
+    n.group = gi;
+  }
+  const counts = new Map();
+  for (const n of G.nodes) counts.set(n.group, (counts.get(n.group) || 0) + 1);
+  for (const n of G.nodes) if ((counts.get(n.group) || 0) < 2) n.group = -1;
+  let lockedMax = 0;
+  for (const [, c] of counts) if (c >= 2) lockedMax = Math.max(lockedMax, c);
+
+  // combo lapse
+  if (playing){
+    G.comboT -= dt;
+    if (G.comboT <= 0 && G.combo > 0){ G.combo = 0; G.comboT = 0; }
+  }
+
+  // resonance drain + escalation
+  if (playing){
+    if (G.run > CFG.GRACE){
+      const d = Math.min(CFG.DRAIN_BASE + CFG.DRAIN_RAMP * (G.run - CFG.GRACE), CFG.DRAIN_CAP);
+      G.meter -= d * dt;
+    }
+    G.spawnT -= dt;
+    if (G.spawnT <= 0){
+      spawnNode();
+      G.spawnEvery = Math.max(9, G.spawnEvery - 0.7);
+      G.spawnT = G.spawnEvery;
+    }
+    if (G.meter <= 0){ G.meter = 0; gameOver(); }
+  }
+
+  // attract mode plays itself behind the title
+  if (G.mode === 'title'){
+    G.aiT -= dt;
+    if (G.aiT <= 0){
+      G.aiT = rand(1.6, 2.6);
+      if (G.nodes.length >= 2){
+        const a = pick(G.nodes);
+        let b = pick(G.nodes), guard = 0;
+        while (b === a && guard++ < 8) b = pick(G.nodes);
+        G.waves.push(makeWave((a.x + b.x) / 2 + rand(-30, 30), (a.y + b.y) / 2 + rand(-30, 30)));
+        Audio_.whoosh();
+      }
+    }
+  }
+
+  // effects
+  for (let i = G.parts.length - 1; i >= 0; i--){
+    const p = G.parts[i];
+    const damp = Math.pow(0.965, dt * 60);
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vx *= damp; p.vy *= damp;
+    p.life -= dt * p.decay;
+    if (p.life <= 0) G.parts.splice(i, 1);
+  }
+  for (let i = G.pops.length - 1; i >= 0; i--){
+    const p = G.pops[i];
+    p.y += p.vy * dt; p.vy *= Math.pow(0.94, dt * 60); p.life -= dt * 0.85;
+    if (p.life <= 0) G.pops.splice(i, 1);
+  }
+  for (let i = G.links.length - 1; i >= 0; i--){
+    G.links[i].life -= dt * 1.5;
+    if (G.links[i].life <= 0) G.links.splice(i, 1);
+  }
+  for (let i = G.ripplesFX.length - 1; i >= 0; i--){
+    if (G.t - G.ripplesFX[i].t0 > G.ripplesFX[i].life) G.ripplesFX.splice(i, 1);
+  }
+
+  G.shake = Math.max(0, G.shake - dt * 34);
+  G.flashWhite = Math.max(0, G.flashWhite - dt * 2.2);
+
+  syncHUD(lockedMax, dt);
+  updateHint();
+}
+
+const nextAt = n => G.t + (1 - n.phase) * n.period;
+
+// ---------- HUD ----------
+let shownScore = 0;
+function syncHUD(lockedMax, dt){
+  shownScore += (G.score - shownScore) * (1 - Math.pow(0.78, dt * 60));
+  if (Math.abs(G.score - shownScore) < 0.6) shownScore = G.score;
+  el.score.textContent = Math.round(shownScore).toLocaleString();
+  el.best.textContent  = 'BEST ' + Math.max(G.best, G.score).toLocaleString();
+
+  el.meterF.style.transform = 'scaleX(' + (G.meter / 100).toFixed(4) + ')';
+  el.meterT.classList.toggle('low', G.meter < 30);
+
+  const m = Math.min(1 + G.combo * 0.12, 5);
+  el.mult.textContent = '×' + m.toFixed(1);
+  el.mult.classList.toggle('on', G.combo > 0 && G.mode === 'play');
+
+  el.locked.textContent = (G.mode === 'play' && lockedMax >= 2) ? lockedMax + ' LOCKED' : '';
+
+  for (let i = 0; i < CFG.MAX_CHARGES; i++){
+    const f = i < G.charges ? 1 : (i === G.charges ? G.chargeT / CFG.RECHARGE : 0);
+    el.chargeEls[i].style.setProperty('--f', f.toFixed(3));
+  }
+}
+
+// ---------- rendering ----------
+function draw(){
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // ground
+  const g = ctx.createRadialGradient(W * 0.5, H * 0.42, 0, W * 0.5, H * 0.42, Math.max(W, H) * 0.78);
+  g.addColorStop(0, '#0a0e1c'); g.addColorStop(0.55, '#070911'); g.addColorStop(1, '#04050a');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  if (G.shake > 0.05 && !REDUCED){
+    const a = Math.random() * TAU, r = G.shake;
+    ctx.translate(Math.cos(a) * r, Math.sin(a) * r);
+  }
+
+  drawGrid();
+  ctx.globalCompositeOperation = 'lighter';
+  drawWaves();
+  drawLocks();
+  drawLinks();
+  drawNodes();
+  drawParts();
+  ctx.globalCompositeOperation = 'source-over';
+  drawPops();
+  if (G.mode === 'play') drawReach();
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawVignette();
+  if (G.flashWhite > 0.002){
+    ctx.fillStyle = `rgba(226,238,255,${G.flashWhite * 0.5})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// the lattice is pushed around by every wavefront — the visual proof that
+// the wave takes time to arrive
+function drawGrid(){
+  const speedScale = 1;
+  ctx.globalCompositeOperation = 'lighter';
+  for (const p of grid){
+    let dx = 0, dy = 0, bright = 0;
+    for (const w of G.waves){
+      const ddx = p.x - w.x, ddy = p.y - w.y;
+      const d = Math.hypot(ddx, ddy) || 1e-4;
+      const delta = d - w.r;
+      const wd = 52 * S;
+      if (delta > -wd && delta < wd && d < w.max + wd){
+        const t = 1 - Math.abs(delta) / wd;
+        const amp = t * t * 11 * S * w.life;
+        dx += (ddx / d) * amp; dy += (ddy / d) * amp;
+        bright += t * t * w.life;
+      }
+    }
+    for (const r of G.ripplesFX){
+      const age = G.t - r.t0;
+      if (age > r.life) continue;
+      const rad = age * r.speed;
+      const ddx = p.x - r.x, ddy = p.y - r.y;
+      const d = Math.hypot(ddx, ddy) || 1e-4;
+      const delta = d - rad;
+      if (delta > -r.width && delta < r.width){
+        const t = 1 - Math.abs(delta) / r.width;
+        const fade = 1 - age / r.life;
+        const amp = t * t * r.amp * S * fade * speedScale;
+        dx += (ddx / d) * amp; dy += (ddy / d) * amp;
+        bright += t * t * fade * 0.5;
+      }
+    }
+    const b = Math.min(bright, 1.4);
+    const a = 0.055 + b * 0.5;
+    const s = (1.05 + b * 1.7) * S;
+    ctx.fillStyle = `rgba(150,175,235,${a})`;
+    ctx.beginPath(); ctx.arc(p.x + dx, p.y + dy, s, 0, TAU); ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function drawWaves(){
+  for (const w of G.waves){
+    const fade = Math.pow(w.life, 0.7);
+    ctx.strokeStyle = rgba(WAVE_RGB, 0.55 * fade);
+    ctx.lineWidth = 2.0 * S;
+    ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, TAU); ctx.stroke();
+
+    ctx.strokeStyle = rgba(WAVE_RGB, 0.14 * fade);
+    ctx.lineWidth = 11 * S;
+    ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, TAU); ctx.stroke();
+
+    ctx.strokeStyle = rgba([140,180,255], 0.06 * fade);
+    ctx.lineWidth = 26 * S;
+    ctx.beginPath(); ctx.arc(w.x, w.y, Math.max(0, w.r - 8 * S), 0, TAU); ctx.stroke();
+  }
+}
+
+// standing links between nodes that are currently phase-locked; they brighten
+// as the group's next firing approaches
+function drawLocks(){
+  const by = new Map();
+  for (const n of G.nodes){
+    if (n.group < 0) continue;
+    if (!by.has(n.group)) by.set(n.group, []);
+    by.get(n.group).push(n);
+  }
+  for (const [, arr] of by){
+    if (arr.length < 2) continue;
+    const soonest = Math.min(...arr.map(n => (1 - n.phase) * n.period));
+    const antic = Math.pow(clamp(1 - soonest / 0.65, 0, 1), 2.2);
+    const a = 0.055 + antic * 0.42;
+    ctx.lineWidth = (0.9 + antic * 2.3) * S;
+    let cx = 0, cy = 0, sus = Infinity;
+    for (const n of arr){ cx += n.x; cy += n.y; if (n.sustain >= 0) sus = Math.min(sus, n.sustain); }
+    if (sus === Infinity) sus = 0;
+    cx /= arr.length; cy /= arr.length;
+    for (let i = 0; i < arr.length; i++)
+      for (let j = i + 1; j < arr.length; j++){
+        const p = arr[i], q = arr[j];
+        const grad = ctx.createLinearGradient(p.x, p.y, q.x, q.y);
+        grad.addColorStop(0, rgba(p.col, a));
+        grad.addColorStop(1, rgba(q.col, a));
+        ctx.strokeStyle = grad;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+      }
+    if (sus >= 2 && G.mode === 'play'){
+      ctx.font = `800 ${(11 + Math.min(sus, 8) * 0.9) * S}px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = rgba(arr[0].col, 0.30 + antic * 0.55);
+      ctx.fillText('×' + sus, cx, cy);
+    }
+  }
+}
+
+function drawLinks(){
+  for (const l of G.links){
+    const a = Math.pow(l.life, 1.6);
+    ctx.strokeStyle = rgba(l.col, a * 0.75);
+    ctx.lineWidth = (1 + a * 3) * S;
+    for (let i = 0; i < l.pts.length; i++)
+      for (let j = i + 1; j < l.pts.length; j++){
+        ctx.beginPath(); ctx.moveTo(l.pts[i].x, l.pts[i].y); ctx.lineTo(l.pts[j].x, l.pts[j].y); ctx.stroke();
+      }
+  }
+}
+
+function drawNodes(){
+  for (const n of G.nodes){
+    const R  = 25 * S;                       // radius of the timing arc
+    const pop = n.born > 0 ? easeOut(1 - n.born) : 1;
+    const anticipation = Math.pow(n.phase, 5);
+    const fl = n.flash;
+    const core = (5.4 + anticipation * 2.4 + fl * 6.5) * S * pop;
+
+    // neglect halo — a node left out of chords is worth progressively more
+    const fresh = Math.min(n.rest, CFG.REST_CAP) / CFG.REST_CAP;
+    if (fresh > 0.06){
+      ctx.strokeStyle = rgba(n.col, 0.05 + fresh * 0.14);
+      ctx.lineWidth = 1 * S;
+      ctx.beginPath(); ctx.arc(n.x, n.y, R + (5 + fresh * 13) * S, 0, TAU); ctx.stroke();
+    }
+
+    // ambient glow
+    const gg = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, (34 + fl * 68) * S * pop);
+    gg.addColorStop(0, rgba(n.col, 0.30 + fl * 0.45));
+    gg.addColorStop(0.45, rgba(n.col, 0.07 + fl * 0.13));
+    gg.addColorStop(1, rgba(n.col, 0));
+    ctx.fillStyle = gg;
+    ctx.beginPath(); ctx.arc(n.x, n.y, (34 + fl * 68) * S * pop, 0, TAU); ctx.fill();
+
+    // dormant track
+    ctx.strokeStyle = rgba(n.col, 0.13);
+    ctx.lineWidth = 1.7 * S;
+    ctx.beginPath(); ctx.arc(n.x, n.y, R * pop, 0, TAU); ctx.stroke();
+
+    // the metronome: an arc sweeping toward the next firing
+    ctx.strokeStyle = rgba(n.col, 0.62 + anticipation * 0.38);
+    ctx.lineWidth = (2.4 + anticipation * 1.9) * S;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, R * pop, -Math.PI / 2, -Math.PI / 2 + n.phase * TAU);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // firing shockwave
+    if (fl > 0.01){
+      const e = 1 - fl;
+      ctx.strokeStyle = rgba(n.col, fl * 0.7);
+      ctx.lineWidth = (1 + fl * 3.4) * S;
+      ctx.beginPath(); ctx.arc(n.x, n.y, R + e * 46 * S, 0, TAU); ctx.stroke();
+    }
+
+    // core
+    ctx.fillStyle = rgba(n.col, 0.92);
+    ctx.beginPath(); ctx.arc(n.x, n.y, core, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${0.30 + fl * 0.6})`;
+    ctx.beginPath(); ctx.arc(n.x, n.y, core * 0.46, 0, TAU); ctx.fill();
+  }
+}
+
+function drawParts(){
+  for (const p of G.parts){
+    const a = clamp(p.life, 0, 1);
+    ctx.fillStyle = rgba(p.col, a * 0.85);
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * a, 0, TAU); ctx.fill();
+  }
+}
+
+function drawPops(){
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const p of G.pops){
+    const a = clamp(p.life, 0, 1), rise = easeOut(1 - p.life);
+    const y = p.y - rise * 16 * S;
+    ctx.globalAlpha = a;
+    ctx.font = `800 ${p.size}px ${FONT}`;
+    ctx.fillStyle = `rgba(255,255,255,${0.55 + a * 0.45})`;
+    ctx.shadowColor = rgba(p.col, 0.9); ctx.shadowBlur = 18 * S;
+    ctx.fillText(p.txt, p.x, y);
+    ctx.shadowBlur = 0;
+    if (p.sub){
+      ctx.font = `700 ${p.size * 0.38}px ${FONT}`;
+      ctx.fillStyle = rgba(p.col, a * 0.9);
+      ctx.fillText(p.sub, p.x, y + p.size * 0.72);
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+// Aiming aid. Equal distance from the click point means equal arrival time,
+// so nodes sitting on a common circle around the cursor will fire together.
+// The ring is drawn only when the current aim actually lands two or more —
+// it reveals the geometry the mechanic runs on without solving anything: you
+// still have to find the alignment, judge whether it is worth the charge, and
+// keep it clear of a machine you would rather not reset.
+function drawReach(){
+  const m = G.mouse;
+  if (!m.has) return;
+  const R = CFG.WAVE_MAX * S;
+  const ready = G.charges > 0;
+
+  // outer boundary of what this wave can reach at all
+  ctx.save();
+  ctx.setLineDash([3 * S, 7 * S]);
+  ctx.strokeStyle = ready ? 'rgba(200,220,255,.13)' : 'rgba(255,120,150,.13)';
+  ctx.lineWidth = 1 * S;
+  ctx.beginPath(); ctx.arc(m.x, m.y, R, 0, TAU); ctx.stroke();
+  ctx.restore();
+
+  if (ready){
+    const tol = CFG.CHORD_WINDOW * CFG.WAVE_SPEED * S * 0.5;   // half a chord window, in pixels
+    const inR = [];
+    for (const n of G.nodes){
+      const d = Math.hypot(n.x - m.x, n.y - m.y);
+      if (d <= R) inR.push({ n, d });
+    }
+    inR.sort((a, b) => a.d - b.d);
+
+    let i = 0;
+    while (i < inR.length){
+      let j = i;
+      while (j + 1 < inR.length && inR[j + 1].d - inR[i].d <= tol) j++;
+      if (j > i){                                   // two or more arrive together
+        const rad = (inR[i].d + inR[j].d) / 2;
+        const col = inR[i].n.col;
+        ctx.strokeStyle = rgba(col, 0.30);
+        ctx.lineWidth = 1.5 * S;
+        ctx.beginPath(); ctx.arc(m.x, m.y, rad, 0, TAU); ctx.stroke();
+        for (let q = i; q <= j; q++){
+          const nd = inR[q].n;
+          ctx.fillStyle = rgba(nd.col, 0.5);
+          ctx.beginPath(); ctx.arc(nd.x, nd.y, 3.1 * S, 0, TAU); ctx.fill();
+        }
+      }
+      i = j + 1;
+    }
+  }
+
+  ctx.fillStyle = ready ? 'rgba(215,230,255,.5)' : 'rgba(255,120,150,.4)';
+  ctx.beginPath(); ctx.arc(m.x, m.y, 2.2 * S, 0, TAU); ctx.fill();
+}
+
+function drawVignette(){
+  const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.34, W / 2, H / 2, Math.max(W, H) * 0.76);
+  v.addColorStop(0, 'rgba(0,0,0,0)');
+  v.addColorStop(1, 'rgba(0,0,0,.62)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+
+  if (G.mode === 'play' && G.meter < 32){
+    const p = 1 - G.meter / 32;
+    const pulse = 0.55 + 0.45 * Math.sin(G.t * 5.5);
+    const r = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.22, W / 2, H / 2, Math.max(W, H) * 0.66);
+    r.addColorStop(0, 'rgba(255,60,90,0)');
+    r.addColorStop(1, `rgba(255,60,90,${0.30 * p * pulse})`);
+    ctx.fillStyle = r; ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// ---------- input ----------
+function pt(e){
+  const t = e.touches && e.touches[0] ? e.touches[0] : e;
+  return { x: t.clientX, y: t.clientY };
+}
+
+function primary(e){
+  if (e.target.closest && e.target.closest('#tools')) return;
+  const p = pt(e);
+  G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.has = true;
+  Audio_.init(); Audio_.resume();
+
+  switch (G.mode){
+    case 'title': startRun(); break;
+    case 'help':  closeHelp(); break;
+    case 'pause': G.mode = 'play';  show(null); break;
+    case 'over':  startRun(); break;
+    case 'play':  release(p.x, p.y); break;
+  }
+}
+
+// A mouse fires on press. Touch has no hover, so on touch a press *aims* —
+// showing the reach circle and any alignment ring — and the wave leaves on
+// release. A quick tap therefore behaves just like a click, while holding lets
+// a phone player actually see the geometry before committing a charge.
+let aiming = false;
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (e.pointerType === 'touch' && G.mode === 'play'){
+    aiming = true;
+    G.mouse.x = e.clientX; G.mouse.y = e.clientY; G.mouse.has = true;
+    Audio_.init(); Audio_.resume();
+    return;
+  }
+  primary(e);
+});
+cv.addEventListener('pointermove', e => { if (aiming){ G.mouse.x = e.clientX; G.mouse.y = e.clientY; } });
+cv.addEventListener('pointerup', () => { if (aiming){ aiming = false; release(G.mouse.x, G.mouse.y); } });
+cv.addEventListener('pointercancel', () => { aiming = false; });
+
+document.addEventListener('pointermove', e => {
+  if (e.pointerType === 'touch') return;
+  G.mouse.x = e.clientX; G.mouse.y = e.clientY; G.mouse.has = true;
+});
+document.addEventListener('pointerleave', () => { if (!aiming) G.mouse.has = false; });
+
+for (const sc of [el.scTitle, el.scPause, el.scOver])
+  sc.addEventListener('pointerdown', e => { e.preventDefault(); primary(e); });
+// Help dismisses on click rather than press, so dragging to scroll it on a
+// short screen doesn't close it.
+el.scHelp.addEventListener('click', () => { if (G.mode === 'help') closeHelp(); });
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+el.bSound.addEventListener('click', e => { e.stopPropagation(); toggleSound(); });
+el.bHelp .addEventListener('click', e => { e.stopPropagation(); openHelp(); });
+
+function toggleSound(){
+  Audio_.init();
+  const on = Audio_.toggle();
+  el.bSound.classList.toggle('off', !on);
+  if (on) Audio_.blip(660, 0.12);
+}
+function openHelp(){
+  const back = (G.mode === 'play' || G.mode === 'pause') ? 'pause' : (G.mode === 'over' ? 'over' : 'title');
+  el.scHelp.dataset.back = back;
+  G.mode = 'help'; show(el.scHelp);
+}
+function closeHelp(){
+  const back = el.scHelp.dataset.back || 'title';
+  G.mode = back;
+  show(back === 'pause' ? el.scPause : back === 'over' ? el.scOver : el.scTitle);
+}
+
+addEventListener('keyup', e => held.delete(e.key.toLowerCase()));
+addEventListener('blur',  () => held.clear());
+
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (AIM_KEYS.has(k)){ held.add(k); e.preventDefault(); }
+  if (k === 'm'){ toggleSound(); return; }
+  if (k === 'h' || k === '?'){
+    if (G.mode === 'help') closeHelp(); else openHelp();
+    return;
+  }
+  if (k === 'p' || k === 'escape'){
+    if (G.mode === 'play'){ G.mode = 'pause'; show(el.scPause); }
+    else if (G.mode === 'pause'){ G.mode = 'play'; show(null); }
+    else if (G.mode === 'help'){ closeHelp(); }
+    return;
+  }
+  if (k === 'r' && G.mode === 'over'){ startRun(); return; }
+  if (k === ' ' || k === 'enter'){
+    const ae = document.activeElement;
+    if (ae && ae.classList && ae.classList.contains('tbtn')) return;   // let the button handle it
+    e.preventDefault();
+    Audio_.init(); Audio_.resume();
+    if (G.mode === 'title' || G.mode === 'over') startRun();
+    else if (G.mode === 'pause'){ G.mode = 'play'; show(null); }
+    else if (G.mode === 'play' && G.mouse.has) release(G.mouse.x, G.mouse.y);
+  }
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && G.mode === 'play'){ G.mode = 'pause'; show(el.scPause); }
+});
+
+// ---------- loop ----------
+let last = performance.now();
+function frame(now){
+  let dt = (now - last) / 1000;
+  last = now;
+  dt = Math.min(dt, 0.05);
+
+  if (G.hitstop > 0){
+    const use = Math.min(G.hitstop, dt);
+    G.hitstop -= use;
+    dt = dt * 0.16;
+  }
+
+  step(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+// ---------- boot ----------
+el.bSound.classList.toggle('off', !Audio_.on);
+el.best.textContent = 'BEST ' + G.best.toLocaleString();
+if (matchMedia('(pointer: coarse)').matches) el.titleCta.textContent = 'Tap to begin';
+resize();
+reset(false);
+G.aiT = 0.7;
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>

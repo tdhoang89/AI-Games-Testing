@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SINGULARIS // Kinetic Horizon</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #04050a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #fff;
+  }
+  #canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  /* Minimalist Modern HUD */
+  #hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 24px 30px;
+    z-index: 10;
+  }
+  .hud-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .score-box {
+    display: flex;
+    flex-direction: column;
+  }
+  .score-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+  }
+  .score-val {
+    font-size: 42px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: #ffffff;
+    text-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+    line-height: 1;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .multiplier-badge {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(0, 240, 255, 0.15);
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #00f0ff;
+    margin-top: 6px;
+    width: fit-content;
+    transition: transform 0.15s ease, background-color 0.2s;
+  }
+  .multiplier-badge.hype {
+    background: rgba(255, 0, 110, 0.25);
+    border-color: rgba(255, 0, 110, 0.6);
+    color: #ff006e;
+    transform: scale(1.1);
+  }
+  .hud-stats {
+    text-align: right;
+  }
+  .high-score-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.3);
+  }
+  .high-score-val {
+    font-size: 18px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    font-variant-numeric: tabular-nums;
+  }
+  .shields-container {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: flex-end;
+  }
+  .shield-pip {
+    width: 18px;
+    height: 6px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .shield-pip.active {
+    background: #00f0ff;
+    border-color: #00f0ff;
+    box-shadow: 0 0 10px #00f0ff;
+  }
+
+  /* Announcements & Feedback */
+  #announcer {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 15;
+  }
+  .banner-text {
+    font-size: 32px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    opacity: 0;
+    transform: scale(0.7);
+    transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .banner-text.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .banner-sub {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 4px;
+  }
+
+  /* Overlay Menus */
+  .overlay-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(4, 5, 10, 0.82);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    padding: 24px;
+  }
+  .overlay-screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .title-glitch {
+    font-size: 58px;
+    font-weight: 900;
+    letter-spacing: 12px;
+    color: #ffffff;
+    text-transform: uppercase;
+    text-shadow: 0 0 30px rgba(0, 240, 255, 0.6);
+    margin-bottom: 6px;
+    text-align: center;
+  }
+  .title-sub {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 6px;
+    color: #00f0ff;
+    text-transform: uppercase;
+    margin-bottom: 34px;
+    text-align: center;
+  }
+  .instruction-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 24px 28px;
+    max-width: 440px;
+    width: 100%;
+    margin-bottom: 32px;
+  }
+  .rule-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .rule-row:last-child {
+    margin-bottom: 0;
+  }
+  .rule-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .rule-text {
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.8);
+  }
+  .rule-text strong {
+    color: #ffffff;
+  }
+  .btn-action {
+    background: #00f0ff;
+    color: #04050a;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 16px 42px;
+    border-radius: 40px;
+    cursor: pointer;
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: auto;
+  }
+  .btn-action:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 35px rgba(0, 240, 255, 0.7);
+    background: #ffffff;
+  }
+  .btn-action:active {
+    transform: scale(0.97);
+  }
+
+  /* Game Over Stats */
+  .game-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 360px;
+    margin-bottom: 28px;
+  }
+  .stat-tile {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 14px;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .stat-tile-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+  }
+  .stat-tile-val {
+    font-size: 24px;
+    font-weight: 800;
+    color: #ffffff;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container">
+  <canvas id="gameCanvas"></canvas>
+</div>
+
+<!-- Dynamic In-Game HUD -->
+<div id="hud">
+  <div class="hud-top">
+    <div class="score-box">
+      <span class="score-label">Score</span>
+      <span class="score-val" id="scoreVal">0</span>
+      <div class="multiplier-badge" id="multBadge">1.0x MULTI</div>
+    </div>
+    <div class="hud-stats">
+      <span class="high-score-label">RECORD</span>
+      <div class="high-score-val" id="highScoreVal">0</div>
+      <div class="shields-container" id="shieldsCont">
+        <div class="shield-pip active"></div>
+        <div class="shield-pip active"></div>
+        <div class="shield-pip active"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Center Announcer -->
+<div id="announcer">
+  <div class="banner-text" id="bannerText">KINETIC CATACLYSM</div>
+  <div class="banner-sub" id="bannerSub">+5,000 PTS</div>
+</div>
+
+<!-- Start Menu Overlay -->
+<div class="overlay-screen" id="startScreen">
+  <h1 class="title-glitch">SINGULARIS</h1>
+  <div class="title-sub">Kinetic Inversion Horizon</div>
+  <div class="instruction-card">
+    <div class="rule-row">
+      <div class="rule-icon" style="color:#00f0ff;">◎</div>
+      <div class="rule-text"><strong>Move cursor / finger</strong> to glide your Radiant Core through the void.</div>
+    </div>
+    <div class="rule-row">
+      <div class="rule-icon" style="color:#ff006e;">✺</div>
+      <div class="rule-text"><strong>HOLD CLICK / TOUCH</strong> to open a Gravitational Well. Shards get pulled into an intense orbital spin.</div>
+    </div>
+    <div class="rule-row">
+      <div class="rule-icon" style="color:#ffe600;">⚡</div>
+      <div class="rule-text"><strong>RELEASE</strong> to unleash a Supernova Expulsion! Flung shards turn into hyper-speed kinetic projectiles.</div>
+    </div>
+    <div class="rule-row">
+      <div class="rule-icon" style="color:#a700ff;">✦</div>
+      <div class="rule-text">Collide shards into each other for massive cascading combo chains! Don't let spikes touch your center.</div>
+    </div>
+  </div>
+  <button class="btn-action" id="startBtn">ENGAGE HORIZON</button>
+</div>
+
+<!-- Game Over Overlay -->
+<div class="overlay-screen hidden" id="gameOverScreen">
+  <h1 class="title-glitch" style="text-shadow: 0 0 30px rgba(255,0,110,0.6);">COLLAPSE</h1>
+  <div class="title-sub" style="color:#ff006e;">Core Singularity Breached</div>
+  <div class="game-stats">
+    <div class="stat-tile">
+      <div class="stat-tile-label">Final Score</div>
+      <div class="stat-tile-val" id="finalScoreVal">0</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-tile-label">Best Combo</div>
+      <div class="stat-tile-val" id="finalComboVal">0x</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-tile-label">Shards Shattered</div>
+      <div class="stat-tile-val" id="finalShattersVal">0</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-tile-label">Supernovas</div>
+      <div class="stat-tile-val" id="finalNovaVal">0</div>
+    </div>
+  </div>
+  <button class="btn-action" id="restartBtn">RE-IGNITE</button>
+</div>
+
+<script>
+/**
+ * SINGULARIS - Core Game Engine
+ * Invented First-Principles Gameplay: Kinetic Gravitational Slinging
+ */
+
+// --- AUDIO SYNTHESIZER (Pure Web Audio API, Zero Audio Assets) ---
+class SoundEngine {
+  constructor() {
+    this.ctx = null;
+    this.muted = false;
+    this.vortexOsc = null;
+    this.vortexGain = null;
+    this.droneOsc = null;
+  }
+
+  init() {
+    if (this.ctx) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AudioCtx();
+
+    // Master Limiter / Compressor to keep explosions crisp and clear
+    this.masterComp = this.ctx.createDynamicsCompressor();
+    this.masterComp.threshold.setValueAtTime(-14, this.ctx.currentTime);
+    this.masterComp.knee.setValueAtTime(10, this.ctx.currentTime);
+    this.masterComp.ratio.setValueAtTime(8, this.ctx.currentTime);
+    this.masterComp.attack.setValueAtTime(0.003, this.ctx.currentTime);
+    this.masterComp.release.setValueAtTime(0.15, this.ctx.currentTime);
+    this.masterComp.connect(this.ctx.destination);
+
+    // Continuous Sub Drone
+    this.droneOsc = this.ctx.createOscillator();
+    this.droneGain = this.ctx.createGain();
+    this.droneOsc.type = 'sine';
+    this.droneOsc.frequency.setValueAtTime(55, this.ctx.currentTime); // A1 note
+    this.droneGain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+    this.droneOsc.connect(this.droneGain);
+    this.droneGain.connect(this.masterComp);
+    this.droneOsc.start();
+
+    // Vortex Hum (Frequency ramps with vortex charge)
+    this.vortexOsc = this.ctx.createOscillator();
+    this.vortexGain = this.ctx.createGain();
+    this.vortexFilter = this.ctx.createBiquadFilter();
+    this.vortexOsc.type = 'sawtooth';
+    this.vortexFilter.type = 'lowpass';
+    this.vortexFilter.frequency.setValueAtTime(200, this.ctx.currentTime);
+    this.vortexGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+
+    this.vortexOsc.connect(this.vortexFilter);
+    this.vortexFilter.connect(this.vortexGain);
+    this.vortexGain.connect(this.masterComp);
+    this.vortexOsc.start();
+  }
+
+  updateVortex(intensity, durationRatio) {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    if (intensity > 0) {
+      const baseFreq = 80 + durationRatio * 320;
+      this.vortexOsc.frequency.setTargetAtTime(baseFreq, now, 0.05);
+      this.vortexFilter.frequency.setTargetAtTime(180 + durationRatio * 850, now, 0.05);
+      this.vortexGain.gain.setTargetAtTime(0.08 * intensity, now, 0.04);
+    } else {
+      this.vortexGain.gain.setTargetAtTime(0.0001, now, 0.06);
+    }
+  }
+
+  // Harmonic Musical Chimes for combo chains (Pentatonic Scale)
+  playChime(comboLevel) {
+    if (!this.ctx) return;
+    const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+    const freq = notes[Math.min(comboLevel, notes.length - 1)];
+    const now = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+
+    // Subtle harmonic overtone
+    const osc2 = this.ctx.createOscillator();
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(freq * 2, now);
+
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+
+    osc.connect(gain);
+    osc2.connect(gain);
+    gain.connect(this.masterComp);
+
+    osc.start(now);
+    osc2.start(now);
+    osc.stop(now + 0.52);
+    osc2.stop(now + 0.52);
+  }
+
+  // Explosive Release / Supernova Burst
+  playBlast(power) {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    // Sub Boom
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.exponentialRampToValueAtTime(32, now + 0.35);
+
+    gain.gain.setValueAtTime(0.35 * Math.min(power, 2.0), now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+    osc.connect(gain);
+    gain.connect(this.masterComp);
+    osc.start(now);
+    osc.stop(now + 0.42);
+
+    // Snappy High Click/Shock
+    const bufSize = this.ctx.sampleRate * 0.08;
+    const buffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufSize * 0.25));
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const nGain = this.ctx.createGain();
+    nGain.gain.setValueAtTime(0.2, now);
+    noise.connect(nGain);
+    nGain.connect(this.masterComp);
+    noise.start(now);
+  }
+
+  // Player Damaged Crunch
+  playHurt() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(90, now);
+    osc.frequency.linearRampToValueAtTime(30, now + 0.25);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    osc.connect(gain);
+    gain.connect(this.masterComp);
+    osc.start(now);
+    osc.stop(now + 0.32);
+  }
+}
+
+const audio = new SoundEngine();
+
+// --- GAME LOGIC & ENGINE ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+let width = window.innerWidth;
+let height = window.innerHeight;
+
+function resize() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+  initGrid();
+}
+window.addEventListener('resize', resize);
+
+// Screen Shake & Camera
+let shakeTrauma = 0;
+function addTrauma(amount) {
+  shakeTrauma = Math.min(shakeTrauma + amount, 1.0);
+}
+
+// Visual Gravitational Grid Lensing
+const GRID_SPACING = 55;
+let gridPoints = [];
+function initGrid() {
+  gridPoints = [];
+  const cols = Math.ceil(width / GRID_SPACING) + 1;
+  const rows = Math.ceil(height / GRID_SPACING) + 1;
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      gridPoints.push({
+        baseX: c * GRID_SPACING,
+        baseY: r * GRID_SPACING,
+        x: c * GRID_SPACING,
+        y: r * GRID_SPACING,
+        vx: 0,
+        vy: 0
+      });
+    }
+  }
+}
+
+// Particle System
+class Particle {
+  constructor(x, y, vx, vy, color, size, life, decay, isStar = false) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.color = color;
+    this.size = size;
+    this.alpha = 1.0;
+    this.life = life;
+    this.decay = decay;
+    this.isStar = isStar;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vx *= 0.96;
+    this.vy *= 0.96;
+    this.alpha -= this.decay;
+  }
+  draw(context) {
+    context.save();
+    context.globalAlpha = Math.max(0, this.alpha);
+    context.fillStyle = this.color;
+    context.shadowColor = this.color;
+    context.shadowBlur = this.isStar ? 12 : 5;
+    context.beginPath();
+    context.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+  }
+}
+let particles = [];
+
+// Floating Score Popups
+class FloatScore {
+  constructor(x, y, text, color, scale = 1) {
+    this.x = x;
+    this.y = y;
+    this.text = text;
+    this.color = color;
+    this.scale = scale;
+    this.alpha = 1.0;
+    this.vy = -1.8;
+  }
+  update() {
+    this.y += this.vy;
+    this.vy *= 0.95;
+    this.alpha -= 0.022;
+  }
+  draw(context) {
+    context.save();
+    context.globalAlpha = Math.max(0, this.alpha);
+    context.font = `900 ${Math.round(14 * this.scale)}px -apple-system, sans-serif`;
+    context.fillStyle = this.color;
+    context.shadowColor = this.color;
+    context.shadowBlur = 10;
+    context.textAlign = 'center';
+    context.fillText(this.text, this.x, this.y);
+    context.restore();
+  }
+}
+let floatScores = [];
+
+// Shockwave Rings
+class Shockwave {
+  constructor(x, y, maxRadius, color, speed = 8) {
+    this.x = x;
+    this.y = y;
+    this.radius = 8;
+    this.maxRadius = maxRadius;
+    this.color = color;
+    this.speed = speed;
+    this.alpha = 1.0;
+  }
+  update() {
+    this.radius += this.speed;
+    this.alpha = 1.0 - (this.radius / this.maxRadius);
+  }
+  draw(context) {
+    if (this.alpha <= 0) return;
+    context.save();
+    context.globalAlpha = this.alpha;
+    context.strokeStyle = this.color;
+    context.shadowColor = this.color;
+    context.shadowBlur = 12;
+    context.lineWidth = Math.max(1, 4 * this.alpha);
+    context.beginPath();
+    context.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    context.stroke();
+    context.restore();
+  }
+}
+let shockwaves = [];
+
+// --- ENTITIES ---
+
+// Shard Types & Characteristics
+const SHARD_TYPES = {
+  MOTE: {
+    type: 'MOTE',
+    hp: 1,
+    color: '#00e5ff',
+    glow: '#00e5ff',
+    radius: 9,
+    sides: 3,
+    score: 100,
+    speed: 1.4,
+    mass: 1.0
+  },
+  BRUTE: {
+    type: 'BRUTE',
+    hp: 3,
+    color: '#ffb703',
+    glow: '#ffb703',
+    radius: 18,
+    sides: 6,
+    score: 300,
+    speed: 0.9,
+    mass: 2.8
+  },
+  SPIKE: {
+    type: 'SPIKE',
+    hp: 1,
+    color: '#ff0055',
+    glow: '#ff0055',
+    radius: 12,
+    sides: 8,
+    isSpike: true,
+    score: 250,
+    speed: 1.6,
+    mass: 1.2
+  },
+  HYPER: {
+    type: 'HYPER',
+    hp: 1,
+    color: '#00ffaa',
+    glow: '#00ffaa',
+    radius: 11,
+    sides: 0, // Circle
+    isHyper: true,
+    score: 600,
+    speed: 1.8,
+    mass: 0.9
+  }
+};
+
+class Shard {
+  constructor(x, y, config) {
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * config.speed;
+    this.vy = (Math.random() - 0.5) * config.speed;
+    this.hp = config.hp;
+    this.maxHp = config.hp;
+    this.config = config;
+    this.radius = config.radius;
+    this.angle = Math.random() * Math.PI * 2;
+    this.vRot = (Math.random() - 0.5) * 0.04;
+    this.captured = false;
+    this.orbitRadius = 0;
+    this.orbitAngle = 0;
+    this.energized = false;
+    this.energizedTimer = 0;
+    this.tail = [];
+    this.markedForDeath = false;
+  }
+
+  update(player) {
+    this.angle += this.vRot;
+
+    // Trail history for high-speed feel
+    if (this.energized || this.captured || Math.abs(this.vx) + Math.abs(this.vy) > 3) {
+      this.tail.push({ x: this.x, y: this.y, alpha: 1.0 });
+      if (this.tail.length > 8) this.tail.shift();
+    } else if (this.tail.length > 0) {
+      this.tail.shift();
+    }
+    for (let t of this.tail) t.alpha *= 0.85;
+
+    if (this.energized) {
+      this.energizedTimer--;
+      if (this.energizedTimer <= 0) {
+        this.energized = false;
+      }
+      this.x += this.vx;
+      this.y += this.vy;
+      this.vx *= 0.985;
+      this.vy *= 0.985;
+      // Bounce off screen boundaries with energetic spark
+      if (this.x < this.radius) { this.x = this.radius; this.vx = -this.vx * 0.9; }
+      if (this.x > width - this.radius) { this.x = width - this.radius; this.vx = -this.vx * 0.9; }
+      if (this.y < this.radius) { this.y = this.radius; this.vy = -this.vy * 0.9; }
+      if (this.y > height - this.radius) { this.y = height - this.radius; this.vy = -this.vy * 0.9; }
+      return;
+    }
+
+    if (this.captured) {
+      // Slingshot / Vortex physics around the player
+      const targetRadius = 55 + (this.config.mass * 12);
+      this.orbitRadius += (targetRadius - this.orbitRadius) * 0.08;
+      // Angular velocity increases as the well holds
+      const spinSpeed = (0.045 + (player.vortexCharge * 0.065)) / (this.config.mass * 0.7);
+      this.orbitAngle += spinSpeed;
+
+      const targetX = player.x + Math.cos(this.orbitAngle) * this.orbitRadius;
+      const targetY = player.y + Math.sin(this.orbitAngle) * this.orbitRadius;
+
+      this.vx = (targetX - this.x) * 0.45;
+      this.vy = (targetY - this.y) * 0.45;
+      this.x += this.vx;
+      this.y += this.vy;
+      return;
+    }
+
+    // Normal inertial drifting towards the center/player softly
+    const dx = player.x - this.x;
+    const dy = player.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    this.vx += (dx / dist) * 0.035;
+    this.vy += (dy / dist) * 0.035;
+
+    // Terminal velocity clamp
+    const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    const maxSpeed = this.config.speed * 2.5;
+    if (speed > maxSpeed) {
+      this.vx = (this.vx / speed) * maxSpeed;
+      this.vy = (this.vy / speed) * maxSpeed;
+    }
+
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // Screen wrapping / soft barrier
+    const margin = 80;
+    if (this.x < -margin) this.x = width + margin;
+    if (this.x > width + margin) this.x = -margin;
+    if (this.y < -margin) this.y = height + margin;
+    if (this.y > height + margin) this.y = -margin;
+  }
+
+  draw(context) {
+    // Draw motion trail
+    if (this.tail.length > 1) {
+      context.save();
+      for (let i = 0; i < this.tail.length - 1; i++) {
+        const pt = this.tail[i];
+        const nextPt = this.tail[i + 1];
+        context.strokeStyle = this.energized ? '#ffffff' : this.config.color;
+        context.globalAlpha = pt.alpha * (this.energized ? 0.8 : 0.35);
+        context.lineWidth = (this.radius * 0.6) * (i / this.tail.length);
+        context.beginPath();
+        context.moveTo(pt.x, pt.y);
+        context.lineTo(nextPt.x, nextPt.y);
+        context.stroke();
+      }
+      context.restore();
+    }
+
+    context.save();
+    context.translate(this.x, this.y);
+    context.rotate(this.angle);
+
+    const displayColor = this.energized ? '#ffffff' : this.config.color;
+    context.strokeStyle = displayColor;
+    context.fillStyle = this.energized ? '#00f0ff' : 'rgba(4, 5, 10, 0.7)';
+    context.lineWidth = this.energized ? 3 : 2;
+    context.shadowColor = this.energized ? '#00f0ff' : this.config.glow;
+    context.shadowBlur = this.energized ? 18 : 8;
+
+    if (this.config.sides === 0) {
+      // Circle / Hyper Core
+      context.beginPath();
+      context.arc(0, 0, this.radius, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+    } else if (this.config.isSpike) {
+      // Dangerous Spiky Urchin
+      context.beginPath();
+      const points = 8;
+      for (let i = 0; i < points * 2; i++) {
+        const r = (i % 2 === 0) ? this.radius * 1.3 : this.radius * 0.55;
+        const a = (i * Math.PI) / points;
+        const px = Math.cos(a) * r;
+        const py = Math.sin(a) * r;
+        if (i === 0) context.moveTo(px, py);
+        else context.lineTo(px, py);
+      }
+      context.closePath();
+      context.fill();
+      context.stroke();
+    } else {
+      // Regular Polygons (Mote / Brute)
+      context.beginPath();
+      for (let i = 0; i < this.config.sides; i++) {
+        const a = (i * 2 * Math.PI) / this.config.sides;
+        const px = Math.cos(a) * this.radius;
+        const py = Math.sin(a) * this.radius;
+        if (i === 0) context.moveTo(px, py);
+        else context.lineTo(px, py);
+      }
+      context.closePath();
+      context.fill();
+      context.stroke();
+    }
+
+    // Health pip for high HP entities
+    if (this.maxHp > 1 && !this.energized) {
+      context.fillStyle = '#ffffff';
+      context.fillRect(-6, -2, 12 * (this.hp / this.maxHp), 3);
+    }
+
+    context.restore();
+  }
+}
+
+// Player / Radiant Core
+class RadiantCore {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.targetX = x;
+    this.targetY = y;
+    this.radius = 16;
+    this.shields = 3;
+    this.maxShields = 3;
+    this.vortexActive = false;
+    this.vortexCharge = 0; // 0.0 -> 1.0
+    this.vortexMaxRadius = 240;
+    this.energy = 1.0; // Energy bar for holding vortex
+    this.invulnerableTimer = 0;
+    this.pulseAnim = 0;
+  }
+
+  update() {
+    // Silky smooth interpolation towards target cursor/touch
+    this.x += (this.targetX - this.x) * 0.18;
+    this.y += (this.targetY - this.y) * 0.18;
+
+    this.pulseAnim += 0.05;
+    if (this.invulnerableTimer > 0) this.invulnerableTimer--;
+
+    if (this.vortexActive) {
+      this.vortexCharge = Math.min(this.vortexCharge + 0.02, 1.0);
+      this.energy = Math.max(0, this.energy - 0.007);
+      if (this.energy <= 0) {
+        // Auto-exhaust collapse
+        this.vortexActive = false;
+        triggerExpulsion(true);
+      }
+    } else {
+      this.vortexCharge = Math.max(this.vortexCharge - 0.05, 0.0);
+      this.energy = Math.min(1.0, this.energy + 0.015);
+    }
+
+    audio.updateVortex(this.vortexActive ? 1.0 : 0.0, this.vortexCharge);
+  }
+
+  draw(context) {
+    // Gravitational Well Horizon Visualizer
+    if (this.vortexCharge > 0.01) {
+      const wellRadius = this.vortexMaxRadius * (0.3 + this.vortexCharge * 0.7);
+      context.save();
+      const grad = context.createRadialGradient(this.x, this.y, 10, this.x, this.y, wellRadius);
+      grad.addColorStop(0, 'rgba(0, 240, 255, 0.03)');
+      grad.addColorStop(0.7, 'rgba(0, 240, 255, 0.09)');
+      grad.addColorStop(1, 'rgba(0, 240, 255, 0.25)');
+
+      context.fillStyle = grad;
+      context.beginPath();
+      context.arc(this.x, this.y, wellRadius, 0, Math.PI * 2);
+      context.fill();
+
+      // Pulsing Event Horizon Perimeter
+      context.strokeStyle = 'rgba(0, 240, 255, ' + (0.3 + Math.sin(this.pulseAnim * 3) * 0.2) + ')';
+      context.lineWidth = 2;
+      context.setLineDash([8, 6]);
+      context.lineDashOffset = -this.pulseAnim * 15;
+      context.beginPath();
+      context.arc(this.x, this.y, wellRadius, 0, Math.PI * 2);
+      context.stroke();
+      context.restore();
+    }
+
+    // Outer Orbiting Energy Shields
+    context.save();
+    for (let i = 0; i < this.shields; i++) {
+      const a = this.pulseAnim * 2 + (i * (Math.PI * 2 / this.shields));
+      const dist = this.radius + 14 + Math.sin(this.pulseAnim * 4 + i) * 2;
+      const sx = this.x + Math.cos(a) * dist;
+      const sy = this.y + Math.sin(a) * dist;
+
+      context.fillStyle = '#00f0ff';
+      context.shadowColor = '#00f0ff';
+      context.shadowBlur = 10;
+      context.beginPath();
+      context.arc(sx, sy, 3.5, 0, Math.PI * 2);
+      context.fill();
+    }
+
+    // Main Core
+    const isFlicker = this.invulnerableTimer > 0 && Math.floor(this.invulnerableTimer / 4) % 2 === 0;
+    if (!isFlicker) {
+      context.shadowColor = this.vortexActive ? '#00f0ff' : '#ffffff';
+      context.shadowBlur = 20;
+
+      // Energy Ring Meter around player
+      context.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      context.lineWidth = 3;
+      context.beginPath();
+      context.arc(this.x, this.y, this.radius + 4, 0, Math.PI * 2);
+      context.stroke();
+
+      context.strokeStyle = this.energy < 0.25 ? '#ff0055' : '#00f0ff';
+      context.lineWidth = 3;
+      context.beginPath();
+      context.arc(this.x, this.y, this.radius + 4, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * this.energy));
+      context.stroke();
+
+      // Hot White Center
+      context.fillStyle = '#ffffff';
+      context.beginPath();
+      context.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.restore();
+  }
+}
+
+// --- GAME STATE ---
+let player = new RadiantCore(width / 2, height / 2);
+let shards = [];
+let score = 0;
+let highScore = parseInt(localStorage.getItem('singularis_high') || '0', 10);
+let scoreMultiplier = 1.0;
+let comboCount = 0;
+let multiplierDecay = 0;
+let totalShattered = 0;
+let totalNovas = 0;
+let maxComboRecorded = 0;
+let gameRunning = false;
+let waveTimer = 0;
+let spawnInterval = 75; // Frames between spawns
+
+// Dynamic Camera Shake Offset
+let shakeX = 0;
+let shakeY = 0;
+
+// Announcement System
+const bannerText = document.getElementById('bannerText');
+const bannerSub = document.getElementById('bannerSub');
+let bannerTimeout = null;
+
+function showAnnouncement(title, sub, color = '#00f0ff') {
+  bannerText.textContent = title;
+  bannerText.style.color = color;
+  bannerText.style.textShadow = `0 0 25px ${color}`;
+  bannerSub.textContent = sub;
+  bannerText.classList.add('show');
+  clearTimeout(bannerTimeout);
+  bannerTimeout = setTimeout(() => {
+    bannerText.classList.remove('show');
+  }, 1600);
+}
+
+// Trigger Supernova Expulsion (Gravity Well Release)
+function triggerExpulsion(exhausted = false) {
+  if (!gameRunning) return;
+  const power = Math.max(0.4, player.vortexCharge);
+  player.vortexActive = false;
+
+  let capturedCount = 0;
+  shards.forEach(s => {
+    if (s.captured) {
+      capturedCount++;
+      s.captured = false;
+      s.energized = true;
+      s.energizedTimer = 110; // Frames of active kinetic lethality
+
+      // Tangential + Outward explosive vector
+      const dx = s.x - player.x;
+      const dy = s.y - player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const normalX = dx / dist;
+      const normalY = dy / dist;
+
+      // Perpendicular tangent based on current angular velocity
+      const tanX = -normalY;
+      const tanY = normalX;
+
+      const launchSpeed = (12 + (power * 16)) / (s.config.mass * 0.8);
+      s.vx = (normalX * 0.8 + tanX * 0.7) * launchSpeed;
+      s.vy = (normalY * 0.8 + tanY * 0.7) * launchSpeed;
+
+      // Little trailing sparks
+      for (let i = 0; i < 6; i++) {
+        particles.push(new Particle(
+          s.x, s.y,
+          (Math.random() - 0.5) * 6,
+          (Math.random() - 0.5) * 6,
+          '#ffffff', Math.random() * 3 + 1, 1.0, 0.04
+        ));
+      }
+    }
+  });
+
+  if (capturedCount > 0) {
+    totalNovas++;
+    audio.playBlast(power * 1.5);
+    addTrauma(0.25 * power);
+    shockwaves.push(new Shockwave(player.x, player.y, player.vortexMaxRadius * 1.2, '#00f0ff', 12));
+
+    if (capturedCount >= 6) {
+      showAnnouncement('KINETIC SUPERNOVA!', `${capturedCount} SHARDS EXPELLED`, '#ffe600');
+    }
+  } else if (!exhausted) {
+    // Empty burst
+    shockwaves.push(new Shockwave(player.x, player.y, 70, 'rgba(255,255,255,0.4)', 6));
+  }
+}
+
+// Spawn Enemy Shards
+function spawnShard() {
+  if (!gameRunning) return;
+  // Edge of screen spawning
+  let x, y;
+  const edge = Math.floor(Math.random() * 4);
+  const pad = 40;
+  if (edge === 0) { x = Math.random() * width; y = -pad; }
+  else if (edge === 1) { x = width + pad; y = Math.random() * height; }
+  else if (edge === 2) { x = Math.random() * width; y = height + pad; }
+  else { x = -pad; y = Math.random() * height; }
+
+  // Difficulty escalation based on score
+  const rand = Math.random();
+  let conf = SHARD_TYPES.MOTE;
+
+  if (score > 1500 && rand < 0.28) {
+    conf = SHARD_TYPES.SPIKE;
+  } else if (score > 800 && rand < 0.5) {
+    conf = SHARD_TYPES.BRUTE;
+  } else if (Math.random() < 0.08) {
+    conf = SHARD_TYPES.HYPER;
+  }
+
+  shards.push(new Shard(x, y, conf));
+}
+
+// Destroy a Shard with Juice
+function shatterShard(shard, destroyer = null) {
+  shard.markedForDeath = true;
+  totalShattered++;
+  comboCount++;
+  maxComboRecorded = Math.max(maxComboRecorded, comboCount);
+  multiplierDecay = 1.0; // Refresh multiplier decay bar
+
+  scoreMultiplier = Math.min(10.0, 1.0 + (comboCount * 0.2));
+  const pts = Math.round(shard.config.score * scoreMultiplier);
+  score += pts;
+
+  audio.playChime(comboCount);
+  addTrauma(0.18);
+
+  // Floating score
+  floatScores.push(new FloatScore(shard.x, shard.y, `+${pts}`, shard.config.color, Math.min(2.0, 1.0 + comboCount * 0.1)));
+
+  // Particles & Explosion
+  const pCount = shard.config.radius * 1.5;
+  for (let i = 0; i < pCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd = Math.random() * 7 + 2;
+    particles.push(new Particle(
+      shard.x, shard.y,
+      Math.cos(angle) * spd,
+      Math.sin(angle) * spd,
+      shard.config.color,
+      Math.random() * 3.5 + 1.5,
+      1.0,
+      Math.random() * 0.03 + 0.02
+    ));
+  }
+
+  shockwaves.push(new Shockwave(shard.x, shard.y, shard.radius * 4, shard.config.color, 7));
+
+  // Hyper Core Supernova Trigger
+  if (shard.config.isHyper) {
+    showAnnouncement('HYPER BURST!', 'TIME DILATION + ALL SHARDS ENERGIZED', '#00ffaa');
+    shards.forEach(s => {
+      if (!s.markedForDeath) {
+        s.energized = true;
+        s.energizedTimer = 140;
+      }
+    });
+  }
+
+  // Brute Splinter Effect
+  if (shard.config.type === 'BRUTE') {
+    for (let i = 0; i < 2; i++) {
+      const mini = new Shard(shard.x, shard.y, SHARD_TYPES.MOTE);
+      mini.vx = (Math.random() - 0.5) * 8;
+      mini.vy = (Math.random() - 0.5) * 8;
+      mini.energized = true;
+      mini.energizedTimer = 60;
+      shards.push(mini);
+    }
+  }
+
+  // Combo Milestone callouts
+  if (comboCount % 10 === 0 && comboCount > 0) {
+    showAnnouncement(`${comboCount}X RESONANCE!`, 'SPECTACULAR FLOW', '#00f0ff');
+  }
+}
+
+// Player Hit by Anomaly
+function damagePlayer(shard) {
+  if (player.invulnerableTimer > 0) return;
+  player.shields--;
+  player.invulnerableTimer = 80;
+  audio.playHurt();
+  addTrauma(0.6);
+  shockwaves.push(new Shockwave(player.x, player.y, 200, '#ff0055', 14));
+
+  // Screen glitch shake
+  comboCount = 0;
+  scoreMultiplier = 1.0;
+
+  // Shatter the offender
+  shatterShard(shard);
+
+  updateHUD();
+
+  if (player.shields <= 0) {
+    gameOver();
+  }
+}
+
+function updateHUD() {
+  document.getElementById('scoreVal').textContent = score.toLocaleString();
+  document.getElementById('highScoreVal').textContent = highScore.toLocaleString();
+
+  const badge = document.getElementById('multBadge');
+  badge.textContent = `${scoreMultiplier.toFixed(1)}x MULTI`;
+  if (scoreMultiplier >= 3.0) badge.classList.add('hype');
+  else badge.classList.remove('hype');
+
+  const pips = document.querySelectorAll('.shield-pip');
+  pips.forEach((pip, idx) => {
+    if (idx < player.shields) pip.classList.add('active');
+    else pip.classList.remove('active');
+  });
+}
+
+function gameOver() {
+  gameRunning = false;
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem('singularis_high', highScore.toString());
+  }
+  document.getElementById('finalScoreVal').textContent = score.toLocaleString();
+  document.getElementById('finalComboVal').textContent = `${maxComboRecorded}x`;
+  document.getElementById('finalShattersVal').textContent = totalShattered.toLocaleString();
+  document.getElementById('finalNovaVal').textContent = totalNovas.toLocaleString();
+  document.getElementById('gameOverScreen').classList.remove('hidden');
+}
+
+function resetGame() {
+  score = 0;
+  scoreMultiplier = 1.0;
+  comboCount = 0;
+  totalShattered = 0;
+  totalNovas = 0;
+  maxComboRecorded = 0;
+  spawnInterval = 75;
+  shards = [];
+  particles = [];
+  shockwaves = [];
+  floatScores = [];
+  player = new RadiantCore(width / 2, height / 2);
+  player.targetX = width / 2;
+  player.targetY = height / 2;
+  gameRunning = true;
+  updateHUD();
+}
+
+// --- USER INPUT HANDLING ---
+let isPointerDown = false;
+
+window.addEventListener('mousemove', (e) => {
+  player.targetX = e.clientX;
+  player.targetY = e.clientY;
+});
+
+window.addEventListener('mousedown', (e) => {
+  if (!gameRunning) return;
+  audio.init();
+  isPointerDown = true;
+  player.vortexActive = true;
+});
+
+window.addEventListener('mouseup', () => {
+  if (!gameRunning || !isPointerDown) return;
+  isPointerDown = false;
+  triggerExpulsion();
+});
+
+// Touch controls for mobile / tablets
+window.addEventListener('touchstart', (e) => {
+  if (!gameRunning) return;
+  audio.init();
+  const touch = e.touches[0];
+  player.targetX = touch.clientX;
+  player.targetY = touch.clientY;
+  isPointerDown = true;
+  player.vortexActive = true;
+  e.preventDefault();
+}, { passive: false });
+
+window.addEventListener('touchmove', (e) => {
+  if (!gameRunning) return;
+  const touch = e.touches[0];
+  player.targetX = touch.clientX;
+  player.targetY = touch.clientY;
+  e.preventDefault();
+}, { passive: false });
+
+window.addEventListener('touchend', (e) => {
+  if (!gameRunning || !isPointerDown) return;
+  isPointerDown = false;
+  triggerExpulsion();
+  e.preventDefault();
+}, { passive: false });
+
+// Keyboard alternatives (Space to pull gravity, WASD to steer)
+const keys = {};
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !keys['Space'] && gameRunning) {
+    audio.init();
+    keys['Space'] = true;
+    player.vortexActive = true;
+  }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space' && gameRunning) {
+    keys['Space'] = false;
+    triggerExpulsion();
+  }
+});
+
+// UI Buttons
+document.getElementById('startBtn').addEventListener('click', () => {
+  audio.init();
+  document.getElementById('startScreen').classList.add('hidden');
+  resetGame();
+});
+document.getElementById('restartBtn').addEventListener('click', () => {
+  audio.init();
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  resetGame();
+});
+
+// --- MAIN LOOP ---
+function update() {
+  if (!gameRunning) return;
+
+  // Multiplier Decay
+  if (comboCount > 0) {
+    multiplierDecay -= 0.0035;
+    if (multiplierDecay <= 0) {
+      comboCount = 0;
+      scoreMultiplier = 1.0;
+      updateHUD();
+    }
+  }
+
+  // Wave Spawning Ramp
+  waveTimer++;
+  if (waveTimer % Math.max(22, Math.floor(spawnInterval - score / 350)) === 0) {
+    spawnShard();
+  }
+
+  player.update();
+
+  // Screen Trauma Shake Decay
+  if (shakeTrauma > 0) {
+    shakeTrauma = Math.max(0, shakeTrauma - 0.03);
+    const shakePower = shakeTrauma * shakeTrauma * 24;
+    shakeX = (Math.random() * 2 - 1) * shakePower;
+    shakeY = (Math.random() * 2 - 1) * shakePower;
+  } else {
+    shakeX = 0;
+    shakeY = 0;
+  }
+
+  // Gravitational Lensing on Background Grid
+  for (let pt of gridPoints) {
+    if (player.vortexActive) {
+      const dx = player.x - pt.baseX;
+      const dy = player.y - pt.baseY;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (d < player.vortexMaxRadius * 1.5) {
+        const pull = (1.0 - d / (player.vortexMaxRadius * 1.5)) * 32 * player.vortexCharge;
+        pt.x = pt.baseX + (dx / d) * pull;
+        pt.y = pt.baseY + (dy / d) * pull;
+      } else {
+        pt.x = pt.baseX;
+        pt.y = pt.baseY;
+      }
+    } else {
+      pt.x += (pt.baseX - pt.x) * 0.1;
+      pt.y += (pt.baseY - pt.y) * 0.1;
+    }
+  }
+
+  // Shards Update & Gravity Capture
+  const wellRadius = player.vortexMaxRadius * (0.3 + player.vortexCharge * 0.7);
+
+  for (let s of shards) {
+    const dx = player.x - s.x;
+    const dy = player.y - s.y;
+    const distToPlayer = Math.sqrt(dx * dx + dy * dy);
+
+    // Gravity Capture Check
+    if (player.vortexActive && distToPlayer < wellRadius && !s.energized) {
+      if (!s.captured) {
+        s.captured = true;
+        s.orbitRadius = distToPlayer;
+        s.orbitAngle = Math.atan2(s.y - player.y, s.x - player.x);
+      }
+    } else if (!player.vortexActive && s.captured) {
+      s.captured = false;
+    }
+
+    s.update(player);
+
+    // Player collision with un-energized shards
+    if (!s.energized && distToPlayer < player.radius + s.radius * 0.8) {
+      damagePlayer(s);
+    }
+  }
+
+  // Kinetic Collisions Between Shards!
+  for (let i = 0; i < shards.length; i++) {
+    const s1 = shards[i];
+    if (s1.markedForDeath) continue;
+
+    for (let j = i + 1; j < shards.length; j++) {
+      const s2 = shards[j];
+      if (s2.markedForDeath) continue;
+
+      const cdx = s2.x - s1.x;
+      const cdy = s2.y - s1.y;
+      const cDist = Math.sqrt(cdx * cdx + cdy * cdy);
+      const minD = s1.radius + s2.radius;
+
+      if (cDist < minD) {
+        // Did an energized shard strike another?
+        if (s1.energized || s2.energized) {
+          // Lethal impact!
+          if (s1.energized && !s2.energized) {
+            s2.hp--;
+            if (s2.hp <= 0) shatterShard(s2, s1);
+            else s1.vx *= -0.5;
+          } else if (s2.energized && !s1.energized) {
+            s1.hp--;
+            if (s1.hp <= 0) shatterShard(s1, s2);
+            else s2.vx *= -0.5;
+          } else {
+            // Both energized collide: dual obliteration
+            shatterShard(s1);
+            shatterShard(s2);
+          }
+        } else {
+          // Normal soft elastic deflection
+          const nx = cdx / cDist;
+          const ny = cdy / cDist;
+          const kx = s1.vx - s2.vx;
+          const ky = s1.vy - s2.vy;
+          const p = 2 * (nx * kx + ny * ky) / (s1.config.mass + s2.config.mass);
+          s1.vx -= p * s2.config.mass * nx;
+          s1.vy -= p * s2.config.mass * ny;
+          s2.vx += p * s1.config.mass * nx;
+          s2.vy += p * s1.config.mass * ny;
+        }
+      }
+    }
+  }
+
+  // Filter dead entities
+  shards = shards.filter(s => !s.markedForDeath);
+
+  // Particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update();
+    if (particles[i].alpha <= 0) particles.splice(i, 1);
+  }
+
+  // Shockwaves
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    shockwaves[i].update();
+    if (shockwaves[i].alpha <= 0) shockwaves.splice(i, 1);
+  }
+
+  // Float Scores
+  for (let i = floatScores.length - 1; i >= 0; i--) {
+    floatScores[i].update();
+    if (floatScores[i].alpha <= 0) floatScores.splice(i, 1);
+  }
+
+  updateHUD();
+}
+
+function render() {
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  // Deep Cosmos Backdrop
+  ctx.fillStyle = '#04050a';
+  ctx.fillRect(-20, -20, width + 40, height + 40);
+
+  // Gravitational Distorted Grid
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let pt of gridPoints) {
+    ctx.moveTo(pt.x - 2, pt.y);
+    ctx.lineTo(pt.x + 2, pt.y);
+    ctx.moveTo(pt.x, pt.y - 2);
+    ctx.lineTo(pt.x, pt.y + 2);
+  }
+  ctx.stroke();
+
+  // Shockwaves
+  shockwaves.forEach(sw => sw.draw(ctx));
+
+  // Shards
+  shards.forEach(s => s.draw(ctx));
+
+  // Player Core
+  if (gameRunning) {
+    player.draw(ctx);
+  }
+
+  // Particle Explosions
+  particles.forEach(p => p.draw(ctx));
+
+  // Floating Score Numbers
+  floatScores.forEach(fs => fs.draw(ctx));
+
+  ctx.restore();
+}
+
+function loop() {
+  update();
+  render();
+  requestAnimationFrame(loop);
+}
+
+// Initial bootstrap
+resize();
+document.getElementById('highScoreVal').textContent = highScore.toLocaleString();
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>

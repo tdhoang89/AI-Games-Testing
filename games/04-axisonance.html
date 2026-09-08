@@ -1,0 +1,1993 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#070811">
+  <title>AXISONANCE — One-Gesture Arcade</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f4f7ff;
+      --muted: #8f98b8;
+      --cyan: #67f5ff;
+      --pink: #ff6ca8;
+      --violet: #b892ff;
+      --gold: #ffd166;
+      --green: #78f7a6;
+      --danger: #ff5f70;
+      --glass: rgba(15, 18, 37, .68);
+      --line: rgba(197, 213, 255, .14);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #070811;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    button { font: inherit; }
+
+    #app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      isolation: isolate;
+      background:
+        radial-gradient(circle at 50% 52%, rgba(86, 82, 181, .07), transparent 42%),
+        #070811;
+    }
+
+    #stage {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    .vignette,
+    .noise {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .vignette {
+      background:
+        linear-gradient(to bottom, rgba(5, 6, 14, .48), transparent 18%, transparent 78%, rgba(5, 6, 14, .55)),
+        radial-gradient(ellipse at center, transparent 42%, rgba(3, 4, 11, .52) 100%);
+    }
+
+    .noise {
+      opacity: .045;
+      mix-blend-mode: soft-light;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.65'/%3E%3C/svg%3E");
+    }
+
+    #hud {
+      position: absolute;
+      inset: max(18px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) auto max(20px, env(safe-area-inset-left));
+      z-index: 5;
+      display: grid;
+      grid-template-columns: 1fr minmax(220px, 360px) 1fr;
+      gap: 24px;
+      align-items: start;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity .5s ease, transform .5s ease;
+    }
+
+    body[data-mode="playing"] #hud,
+    body[data-mode="folding"] #hud,
+    body[data-mode="paused"] #hud,
+    body[data-mode="gameover"] #hud {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      letter-spacing: .17em;
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(240, 245, 255, .72);
+    }
+
+    .brand-mark {
+      position: relative;
+      width: 23px;
+      height: 23px;
+      border: 1px solid rgba(103, 245, 255, .54);
+      border-radius: 50%;
+      box-shadow: 0 0 18px rgba(103, 245, 255, .2), inset 0 0 12px rgba(103, 245, 255, .08);
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      top: 10px;
+      height: 1px;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+      transform: rotate(-31deg);
+    }
+
+    .score-wrap { text-align: center; }
+
+    .score-kicker {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      min-height: 16px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+
+    #score {
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(31px, 4vw, 51px);
+      line-height: .96;
+      font-weight: 250;
+      letter-spacing: .06em;
+      text-shadow: 0 0 24px rgba(190, 208, 255, .18);
+    }
+
+    #multiplier {
+      display: inline-flex;
+      align-items: center;
+      min-width: 34px;
+      height: 18px;
+      padding: 0 7px;
+      border: 1px solid rgba(103, 245, 255, .22);
+      border-radius: 999px;
+      color: var(--cyan);
+      background: rgba(103, 245, 255, .07);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      transition: transform .18s ease, border-color .18s ease;
+    }
+
+    #multiplier.bump { transform: scale(1.2); border-color: rgba(103, 245, 255, .7); }
+
+    .coherence {
+      width: min(100%, 300px);
+      margin: 9px auto 0;
+    }
+
+    .coherence-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+      color: rgba(185, 195, 226, .58);
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .coherence-track {
+      height: 3px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(176, 192, 240, .13);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.02);
+    }
+
+    #coherence-fill {
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan));
+      box-shadow: 0 0 14px rgba(103, 245, 255, .45);
+      transform-origin: left center;
+      transition: background .25s ease;
+    }
+
+    .hud-actions {
+      justify-self: end;
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .icon-button {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(197, 213, 255, .12);
+      border-radius: 12px;
+      color: rgba(237, 243, 255, .76);
+      background: rgba(13, 16, 32, .48);
+      backdrop-filter: blur(14px);
+      cursor: pointer;
+      transition: border-color .2s ease, color .2s ease, background .2s ease, transform .2s ease;
+    }
+
+    .icon-button:hover {
+      color: white;
+      border-color: rgba(103, 245, 255, .35);
+      background: rgba(21, 26, 50, .72);
+      transform: translateY(-1px);
+    }
+
+    .icon-button:active { transform: translateY(0) scale(.95); }
+    .icon-button svg { width: 16px; height: 16px; fill: currentColor; }
+
+    #coach {
+      position: absolute;
+      z-index: 6;
+      left: 50%;
+      bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px));
+      width: min(calc(100% - 32px), 520px);
+      padding: 13px 18px 14px;
+      border: 1px solid rgba(103, 245, 255, .17);
+      border-radius: 16px;
+      background: rgba(10, 13, 27, .66);
+      box-shadow: 0 16px 60px rgba(0, 0, 0, .24), inset 0 1px rgba(255,255,255,.025);
+      backdrop-filter: blur(16px);
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-50%, 12px);
+      transition: opacity .35s ease, transform .35s ease;
+    }
+
+    #coach.visible { opacity: 1; transform: translate(-50%, 0); }
+
+    #coach strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--cyan);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+
+    #coach span {
+      color: rgba(228, 235, 255, .78);
+      font-size: 12px;
+      letter-spacing: .015em;
+    }
+
+    #toast-layer {
+      position: absolute;
+      z-index: 7;
+      left: 50%;
+      top: 19%;
+      width: min(90vw, 600px);
+      transform: translateX(-50%);
+      pointer-events: none;
+      text-align: center;
+    }
+
+    .toast {
+      position: absolute;
+      left: 50%;
+      width: 100%;
+      transform: translate(-50%, 10px) scale(.96);
+      opacity: 0;
+      animation: toast-in 1.25s cubic-bezier(.2,.75,.25,1) forwards;
+      color: var(--ink);
+      font-size: clamp(14px, 2vw, 19px);
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      text-shadow: 0 0 22px currentColor;
+    }
+
+    .toast small {
+      display: block;
+      margin-top: 4px;
+      color: rgba(218, 226, 248, .6);
+      font-size: 8px;
+      letter-spacing: .18em;
+    }
+
+    @keyframes toast-in {
+      0% { opacity: 0; transform: translate(-50%, 12px) scale(.94); }
+      18% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      72% { opacity: 1; transform: translate(-50%, -4px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -20px) scale(.98); }
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: max(24px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background: radial-gradient(circle at center, rgba(7, 8, 18, .22), rgba(6, 7, 15, .68));
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .45s ease, visibility .45s ease;
+    }
+
+    .overlay.visible { opacity: 1; visibility: visible; }
+
+    .panel {
+      position: relative;
+      flex: 0 0 auto;
+      width: min(100%, 650px);
+      margin: auto 0;
+      overflow: hidden;
+      padding: clamp(27px, 5vw, 48px);
+      border: 1px solid rgba(195, 211, 255, .14);
+      border-radius: 28px;
+      background: linear-gradient(145deg, rgba(20, 23, 45, .8), rgba(9, 11, 24, .69));
+      box-shadow: 0 32px 100px rgba(0,0,0,.45), inset 0 1px rgba(255,255,255,.035);
+      backdrop-filter: blur(24px) saturate(120%);
+      text-align: center;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      width: 230px;
+      height: 230px;
+      left: 50%;
+      top: -155px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: rgba(103, 245, 255, .16);
+      filter: blur(60px);
+    }
+
+    .eyebrow {
+      margin-bottom: 16px;
+      color: var(--cyan);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .28em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(42px, 9vw, 82px);
+      line-height: .88;
+      font-weight: 180;
+      letter-spacing: .06em;
+      background: linear-gradient(118deg, #ffffff 8%, #b9c8ed 50%, #86f7ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 26px rgba(113, 224, 255, .16));
+    }
+
+    .tagline {
+      margin: 15px 0 0;
+      color: rgba(223, 230, 250, .72);
+      font-size: clamp(13px, 2.1vw, 16px);
+      letter-spacing: .03em;
+    }
+
+    .rules {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 30px 0 28px;
+    }
+
+    .rule {
+      min-height: 100px;
+      padding: 16px 11px 13px;
+      border: 1px solid rgba(191, 207, 255, .09);
+      border-radius: 16px;
+      background: rgba(255,255,255,.018);
+    }
+
+    .rule-visual {
+      position: relative;
+      height: 31px;
+      margin-bottom: 9px;
+    }
+
+    .rule-dot,
+    .rule-echo {
+      position: absolute;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      transform: translateY(-50%);
+    }
+
+    .rule-dot {
+      left: calc(50% - 22px);
+      background: var(--cyan);
+      box-shadow: 0 0 14px var(--cyan);
+    }
+
+    .rule-echo {
+      right: calc(50% - 22px);
+      border: 1px solid var(--cyan);
+      box-shadow: 0 0 10px rgba(103, 245, 255, .35), inset 0 0 8px rgba(103, 245, 255, .15);
+    }
+
+    .rule-line {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 1px;
+      height: 31px;
+      background: linear-gradient(transparent, var(--cyan), transparent);
+      transform: translate(-50%, -50%) rotate(28deg);
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    .rule-release::before,
+    .rule-release::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(184, 146, 255, .72);
+    }
+
+    .rule-release::before { width: 14px; height: 14px; box-shadow: 0 0 12px var(--violet); }
+    .rule-release::after { width: 28px; height: 28px; opacity: .35; }
+
+    .rule strong {
+      display: block;
+      margin-bottom: 3px;
+      color: rgba(239, 244, 255, .88);
+      font-size: 9px;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    .rule span {
+      display: block;
+      color: rgba(169, 181, 214, .62);
+      font-size: 10px;
+      line-height: 1.35;
+    }
+
+    .primary-button {
+      position: relative;
+      min-width: 220px;
+      height: 54px;
+      padding: 0 27px;
+      overflow: hidden;
+      border: 1px solid rgba(112, 244, 255, .4);
+      border-radius: 999px;
+      color: #061015;
+      background: linear-gradient(100deg, #dffeff, #77eff9 60%, #a9f9ff);
+      box-shadow: 0 10px 36px rgba(64, 218, 235, .22), inset 0 1px rgba(255,255,255,.75);
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .primary-button::after {
+      content: "";
+      position: absolute;
+      inset: -2px auto -2px -38%;
+      width: 30%;
+      transform: skewX(-20deg);
+      background: rgba(255,255,255,.52);
+      filter: blur(8px);
+      transition: left .45s ease;
+    }
+
+    .primary-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 44px rgba(64, 218, 235, .32), inset 0 1px rgba(255,255,255,.75);
+    }
+
+    .primary-button:hover::after { left: 110%; }
+    .primary-button:active { transform: translateY(0) scale(.98); }
+
+    .fine-print {
+      margin-top: 15px;
+      color: rgba(148, 161, 196, .46);
+      font-size: 9px;
+      letter-spacing: .09em;
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 3px;
+    }
+
+    #gameover .panel { width: min(100%, 530px); }
+
+    #gameover h2,
+    #pause-card h2 {
+      margin: 0;
+      font-size: clamp(32px, 7vw, 58px);
+      line-height: 1;
+      font-weight: 220;
+      letter-spacing: .08em;
+    }
+
+    .final-score {
+      margin: 19px 0 4px;
+      color: white;
+      font-size: clamp(43px, 10vw, 72px);
+      line-height: 1;
+      font-weight: 220;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .04em;
+    }
+
+    #record-label {
+      min-height: 15px;
+      color: var(--gold);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin: 27px 0;
+      border-top: 1px solid rgba(195, 211, 255, .09);
+      border-bottom: 1px solid rgba(195, 211, 255, .09);
+    }
+
+    .result { padding: 17px 8px; }
+    .result + .result { border-left: 1px solid rgba(195, 211, 255, .09); }
+
+    .result b {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 18px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .result span {
+      color: rgba(157, 171, 205, .56);
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    #pause-card .panel { width: min(100%, 430px); }
+    #pause-card p { margin: 14px 0 25px; color: rgba(211, 221, 245, .62); font-size: 12px; }
+
+    #aria-status {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 680px) {
+      #hud {
+        grid-template-columns: auto 1fr auto;
+        gap: 10px;
+        left: max(12px, env(safe-area-inset-left));
+        right: max(12px, env(safe-area-inset-right));
+      }
+
+      .brand span { display: none; }
+      .brand { min-width: 40px; }
+      .score-kicker { gap: 7px; letter-spacing: .12em; }
+      #score { font-size: 34px; }
+      .coherence { margin-top: 7px; }
+      .hud-actions { gap: 5px; }
+      .icon-button { width: 36px; height: 36px; border-radius: 11px; }
+      .rules { gap: 6px; margin: 24px 0 23px; }
+      .rule { min-height: 92px; padding: 13px 7px 10px; }
+      .rule span { font-size: 9px; }
+      .panel { border-radius: 22px; }
+      #toast-layer { top: 16%; }
+    }
+
+    @media (max-width: 420px) {
+      h1 {
+        font-size: clamp(31px, 10.5vw, 42px);
+        letter-spacing: .035em;
+      }
+    }
+
+    @media (max-height: 650px) {
+      .panel { padding-top: 24px; padding-bottom: 24px; }
+      .eyebrow { margin-bottom: 10px; }
+      h1 { font-size: 46px; }
+      .tagline { margin-top: 10px; }
+      .rules { margin: 18px 0; }
+      .rule { min-height: 80px; padding-top: 10px; }
+      .rule-visual { height: 24px; margin-bottom: 6px; }
+      .fine-print { margin-top: 10px; }
+    }
+
+    @media (max-height: 480px) {
+      .overlay {
+        padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      }
+
+      .panel {
+        padding: 14px 20px;
+        border-radius: 16px;
+      }
+
+      .eyebrow { display: none; }
+
+      h1 {
+        font-size: clamp(31px, 9vw, 38px);
+        letter-spacing: .035em;
+      }
+
+      .tagline {
+        margin-top: 6px;
+        font-size: 11px;
+      }
+
+      .rules {
+        gap: 6px;
+        margin: 10px 0;
+      }
+
+      .rule {
+        min-height: 0;
+        padding: 8px 6px;
+      }
+
+      .rule-visual { display: none; }
+      .rule span { font-size: 8px; line-height: 1.25; }
+
+      .primary-button {
+        min-width: 190px;
+        height: 44px;
+      }
+
+      .fine-print {
+        margin-top: 7px;
+        font-size: 8px;
+      }
+
+      #gameover h2,
+      #pause-card h2 { font-size: 30px; }
+
+      .final-score {
+        margin: 9px 0 2px;
+        font-size: 38px;
+      }
+
+      .results { margin: 10px 0; }
+      .result { padding: 8px 5px; }
+      .result b { margin-bottom: 2px; font-size: 16px; }
+
+      #pause-card p { margin: 8px 0 12px; }
+
+      #coach {
+        bottom: max(8px, env(safe-area-inset-bottom));
+        padding: 8px 12px 9px;
+      }
+
+      #coach span { font-size: 10px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .12s !important;
+      }
+    }
+  </style>
+</head>
+<body data-mode="intro">
+  <main id="app">
+    <canvas id="stage" tabindex="0" aria-label="Axisonance game field"></canvas>
+    <div class="vignette"></div>
+    <div class="noise"></div>
+
+    <section id="hud" aria-label="Game status">
+      <div class="brand">
+        <i class="brand-mark" aria-hidden="true"></i>
+        <span>Axisonance</span>
+      </div>
+
+      <div class="score-wrap">
+        <div class="score-kicker">
+          <span id="level-label">Field 01</span>
+          <span id="multiplier">×1.00</span>
+          <span id="high-label">Best 000000</span>
+        </div>
+        <div id="score">000000</div>
+        <div class="coherence">
+          <div class="coherence-meta"><span>Coherence</span><span id="coherence-value">100%</span></div>
+          <div class="coherence-track"><div id="coherence-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="hud-actions">
+        <button class="icon-button" id="mute-button" type="button" aria-label="Mute audio" title="Mute (M)">
+          <svg id="sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4zm13.5 3a4.5 4.5 0 0 0-2.5-4.03v8.05A4.5 4.5 0 0 0 17.5 12zm-2.5-8.8v2.06a7 7 0 0 1 0 13.48v2.06A9 9 0 0 0 15 3.2z"/></svg>
+          <svg id="sound-off" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4 9v6h4l5 4V5L8 9H4zm12.59 3 2.7-2.7-1.42-1.42-2.7 2.7-2.7-2.7-1.42 1.42 2.7 2.7-2.7 2.7 1.42 1.42 2.7-2.7 2.7 2.7 1.42-1.42-2.7-2.7z"/></svg>
+        </button>
+        <button class="icon-button" id="pause-button" type="button" aria-label="Pause game" title="Pause (P)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7V5zm6 0h4v14h-4V5z"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <div id="coach" role="status">
+      <strong>Find the echo</strong>
+      <span>Move the crease until the bright preview sits inside its hollow twin. Release to fold.</span>
+    </div>
+    <div id="toast-layer" aria-hidden="true"></div>
+
+    <section class="overlay visible" id="intro" aria-labelledby="game-title" aria-hidden="false">
+      <div class="panel">
+        <div class="eyebrow">An original one-gesture arcade</div>
+        <h1 id="game-title">Axisonance</h1>
+        <p class="tagline">Turn the axis. Reunite light with its echo.</p>
+
+        <div class="rules" aria-label="How to play">
+          <div class="rule">
+            <div class="rule-visual"><i class="rule-dot"></i><i class="rule-echo"></i></div>
+            <strong>Read</strong>
+            <span>Pair each solid light with its hollow echo.</span>
+          </div>
+          <div class="rule">
+            <div class="rule-visual"><i class="rule-line"></i></div>
+            <strong>Aim</strong>
+            <span>Move around the field to rotate the crease.</span>
+          </div>
+          <div class="rule">
+            <div class="rule-visual rule-release"></div>
+            <strong>Fold</strong>
+            <span>Tap, click, or press Space to mirror everything.</span>
+          </div>
+        </div>
+
+        <button class="primary-button" id="start-button" type="button">Enter the field</button>
+        <div class="fine-print">Mouse · touch · ← → + Space &nbsp;·&nbsp; Match several at once to form a chord</div>
+      </div>
+    </section>
+
+    <section class="overlay" id="gameover" aria-labelledby="gameover-title" aria-hidden="true">
+      <div class="panel">
+        <div class="eyebrow">The field unraveled</div>
+        <h2 id="gameover-title">Echo lost</h2>
+        <div class="final-score" id="final-score">000000</div>
+        <div id="record-label"></div>
+        <div class="results">
+          <div class="result"><b id="result-accuracy">0%</b><span>Accuracy</span></div>
+          <div class="result"><b id="result-chain">0</b><span>Best chain</span></div>
+          <div class="result"><b id="result-chord">0</b><span>Best chord</span></div>
+        </div>
+        <button class="primary-button" id="restart-button" type="button">Fold again</button>
+        <div class="fine-print" id="gameover-best">Best 000000</div>
+      </div>
+    </section>
+
+    <section class="overlay" id="pause-card" aria-labelledby="pause-title" aria-hidden="true">
+      <div class="panel">
+        <div class="eyebrow">Field suspended</div>
+        <h2 id="pause-title">Paused</h2>
+        <p>Your light is safe. Return when the crease feels right.</p>
+        <button class="primary-button" id="resume-button" type="button">Resume</button>
+        <div class="fine-print">Press P or Escape</div>
+      </div>
+    </section>
+
+    <div id="aria-status" aria-live="polite"></div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const TAU = Math.PI * 2;
+      const HALF_PI = Math.PI / 2;
+      const COLORS = ["#67f5ff", "#ff6ca8", "#b892ff", "#ffd166", "#78f7a6"];
+      const SHAPES = ["circle", "diamond", "triangle", "hex", "spark"];
+      const LANES = [.27, .385, .50, .615, .725];
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      const canvas = document.getElementById("stage");
+      const ctx = canvas.getContext("2d", { alpha: false });
+      const body = document.body;
+      const intro = document.getElementById("intro");
+      const gameover = document.getElementById("gameover");
+      const pauseCard = document.getElementById("pause-card");
+      const coach = document.getElementById("coach");
+      const toastLayer = document.getElementById("toast-layer");
+      const scoreEl = document.getElementById("score");
+      const levelEl = document.getElementById("level-label");
+      const highEl = document.getElementById("high-label");
+      const multiplierEl = document.getElementById("multiplier");
+      const coherenceFill = document.getElementById("coherence-fill");
+      const coherenceValue = document.getElementById("coherence-value");
+      const ariaStatus = document.getElementById("aria-status");
+      const muteButton = document.getElementById("mute-button");
+      const soundOn = document.getElementById("sound-on");
+      const soundOff = document.getElementById("sound-off");
+
+      const view = { w: innerWidth, h: innerHeight, dpr: 1, cx: innerWidth / 2, cy: innerHeight / 2, r: 300 };
+      const pointer = { x: innerWidth / 2, y: innerHeight / 2, active: false, seen: false };
+      const keys = { left: false, right: false };
+      let pairId = 0;
+      let stars = [];
+      let lastFrame = performance.now();
+      let overlayTimer = 0;
+
+      function storedNumber(key, fallback = 0) {
+        try {
+          const value = Number(localStorage.getItem(key));
+          return Number.isFinite(value) ? value : fallback;
+        } catch (_) { return fallback; }
+      }
+
+      function storeNumber(key, value) {
+        try { localStorage.setItem(key, String(value)); } catch (_) {}
+      }
+
+      const state = {
+        mode: "intro",
+        resumeMode: "playing",
+        time: 0,
+        demoTime: 0,
+        score: 0,
+        shownScore: 0,
+        high: storedNumber("axisonance.high", 0),
+        level: 1,
+        coherence: 100,
+        chain: 0,
+        maxChain: 0,
+        maxChord: 0,
+        folds: 0,
+        successfulFolds: 0,
+        hits: 0,
+        perfectHits: 0,
+        aim: .61,
+        pairs: [],
+        effects: [],
+        spawnQueue: [],
+        fold: null,
+        tutorial: true,
+        tutorialIdeal: .61,
+        goodCount: 0,
+        flash: 0,
+        shake: 0,
+        levelPulse: 0,
+        spawnSerial: 0
+      };
+
+      class SoundEngine {
+        constructor() {
+          this.context = null;
+          this.master = null;
+          this.muted = storedNumber("axisonance.muted", 0) === 1;
+          this.updateButton();
+        }
+
+        ensure() {
+          if (!this.context) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            this.context = new AudioContext();
+            this.master = this.context.createGain();
+            this.master.gain.value = this.muted ? 0 : .42;
+            const compressor = this.context.createDynamicsCompressor();
+            compressor.threshold.value = -18;
+            compressor.knee.value = 14;
+            compressor.ratio.value = 5;
+            compressor.attack.value = .004;
+            compressor.release.value = .2;
+            this.master.connect(compressor);
+            compressor.connect(this.context.destination);
+          }
+          if (this.context.state === "suspended") this.context.resume();
+        }
+
+        updateButton() {
+          soundOn.hidden = this.muted;
+          soundOff.hidden = !this.muted;
+          muteButton.setAttribute("aria-label", this.muted ? "Unmute audio" : "Mute audio");
+          muteButton.title = this.muted ? "Unmute (M)" : "Mute (M)";
+        }
+
+        toggle() {
+          this.muted = !this.muted;
+          storeNumber("axisonance.muted", this.muted ? 1 : 0);
+          if (this.master && this.context) {
+            this.master.gain.cancelScheduledValues(this.context.currentTime);
+            this.master.gain.setTargetAtTime(this.muted ? 0 : .42, this.context.currentTime, .018);
+          }
+          this.updateButton();
+        }
+
+        tone(freq, duration, options = {}) {
+          if (this.muted) return;
+          this.ensure();
+          if (!this.context || !this.master) return;
+          const now = this.context.currentTime + (options.delay || 0);
+          const osc = this.context.createOscillator();
+          const gain = this.context.createGain();
+          const filter = this.context.createBiquadFilter();
+          osc.type = options.type || "sine";
+          osc.frequency.setValueAtTime(freq, now);
+          if (options.to) osc.frequency.exponentialRampToValueAtTime(Math.max(20, options.to), now + duration);
+          filter.type = "lowpass";
+          filter.frequency.value = options.cutoff || 6000;
+          filter.Q.value = options.q || .4;
+          gain.gain.setValueAtTime(.0001, now);
+          gain.gain.exponentialRampToValueAtTime(options.gain || .08, now + Math.min(.018, duration * .2));
+          gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.master);
+          osc.start(now);
+          osc.stop(now + duration + .03);
+        }
+
+        fold() {
+          this.tone(185, .18, { type: "triangle", to: 72, gain: .075, cutoff: 1800 });
+          this.tone(760, .11, { type: "sine", to: 1180, gain: .035, delay: .035 });
+        }
+
+        hit(count, perfect) {
+          const chord = [261.63, 329.63, 392, 523.25, 659.25];
+          const length = Math.min(chord.length, Math.max(2, count + 1));
+          for (let i = 0; i < length; i++) {
+            this.tone(chord[i] * (perfect ? 1.5 : 1), .28, {
+              type: i % 2 ? "triangle" : "sine",
+              gain: .046,
+              delay: i * .035,
+              cutoff: 4200
+            });
+          }
+          if (count > 1) this.tone(130.81, .42, { type: "sine", gain: .05, to: 196 });
+        }
+
+        miss() {
+          this.tone(108, .23, { type: "sawtooth", to: 66, gain: .035, cutoff: 620 });
+        }
+
+        level() {
+          [392, 523.25, 659.25, 783.99].forEach((f, i) => this.tone(f, .24, { type: "triangle", gain: .035, delay: i * .055 }));
+        }
+
+        end() {
+          [220, 164.81, 130.81].forEach((f, i) => this.tone(f, .5, { type: "sine", gain: .05, delay: i * .12, to: f * .78 }));
+        }
+      }
+
+      const sound = new SoundEngine();
+
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const normTau = a => ((a % TAU) + TAU) % TAU;
+      const lineAngle = a => ((a % Math.PI) + Math.PI) % Math.PI;
+      const angleDistance = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+      const rand = (min, max) => min + Math.random() * (max - min);
+      const choose = arr => arr[Math.floor(Math.random() * arr.length)];
+      const padScore = n => String(Math.max(0, Math.round(n))).padStart(6, "0");
+
+      function hexToRgba(hex, alpha) {
+        const value = parseInt(hex.slice(1), 16);
+        return `rgba(${value >> 16}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+      }
+
+      function resize() {
+        view.w = innerWidth;
+        view.h = innerHeight;
+        view.dpr = Math.min(devicePixelRatio || 1, 2);
+        canvas.width = Math.round(view.w * view.dpr);
+        canvas.height = Math.round(view.h * view.dpr);
+        canvas.style.width = `${view.w}px`;
+        canvas.style.height = `${view.h}px`;
+        ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+        const hudSpace = view.h < 650 ? 18 : 34;
+        view.cx = view.w / 2;
+        view.cy = view.h / 2 + hudSpace;
+        view.r = Math.max(145, Math.min(view.w * .425, view.h * .39, 430));
+        if (view.w < 520) view.r = Math.min(view.r, view.w * .455);
+        buildStars();
+      }
+
+      function buildStars() {
+        const count = Math.round(clamp((view.w * view.h) / 14500, 42, 120));
+        stars = Array.from({ length: count }, (_, i) => ({
+          x: ((i * 71.17) % 101) / 101,
+          y: ((i * 43.73 + 17) % 103) / 103,
+          size: .35 + ((i * 13) % 9) / 12,
+          depth: .2 + ((i * 19) % 13) / 16,
+          phase: (i * 2.17) % TAU
+        }));
+      }
+
+      function point(angle, lane) {
+        const r = view.r * lane;
+        return { x: view.cx + Math.cos(angle) * r, y: view.cy + Math.sin(angle) * r };
+      }
+
+      function requiredAxis(pair) {
+        return lineAngle((pair.liveAngle + pair.targetAngle) / 2);
+      }
+
+      function thresholdFor(pair) {
+        const radius = Math.max(60, view.r * pair.lane);
+        return clamp(25 / radius, .072, .19);
+      }
+
+      function desiredPairCount() {
+        if (state.tutorial) return 1;
+        return Math.min(5, 3 + Math.floor((state.level - 1) / 3));
+      }
+
+      function availableLane() {
+        const occupied = new Set(state.pairs.map(p => p.laneIndex));
+        const free = LANES.map((_, i) => i).filter(i => !occupied.has(i));
+        return free.length ? choose(free) : Math.floor(Math.random() * LANES.length);
+      }
+
+      function availableType() {
+        const occupied = new Set(state.pairs.map(p => p.typeIndex));
+        const free = COLORS.map((_, i) => i).filter(i => !occupied.has(i));
+        return free.length ? choose(free) : state.spawnSerial % COLORS.length;
+      }
+
+      function createPair(options = {}) {
+        const laneIndex = options.laneIndex ?? availableLane();
+        const lane = LANES[laneIndex];
+        const index = state.spawnSerial++;
+        const typeIndex = options.typeIndex ?? availableType();
+        const liveAngle = options.liveAngle ?? rand(0, TAU);
+        let targetAngle;
+        let align = options.align || null;
+
+        if (typeof options.targetAngle === "number") {
+          targetAngle = options.targetAngle;
+        } else if (align) {
+          targetAngle = normTau(2 * requiredAxis(align) - liveAngle + rand(-.018, .018));
+        } else {
+          targetAngle = normTau(liveAngle + rand(.8, TAU - .8));
+        }
+
+        let liveSpeed = options.static ? 0 : rand(.105, .195) * (Math.random() < .5 ? -1 : 1);
+        let targetSpeed = options.static ? 0 : (state.level >= 3 ? rand(-.055, .055) : rand(-.025, .025));
+        const speedScale = 1 + Math.min(1.05, (state.level - 1) * .075);
+        liveSpeed *= speedScale;
+        targetSpeed *= speedScale;
+
+        if (align && !options.static) {
+          const targetSum = align.liveSpeed + align.targetSpeed;
+          targetSpeed = clamp(targetSum - liveSpeed, -.24, .24);
+        }
+
+        return {
+          id: ++pairId,
+          laneIndex,
+          lane,
+          typeIndex,
+          color: COLORS[typeIndex],
+          shape: SHAPES[typeIndex],
+          liveAngle: normTau(liveAngle),
+          targetAngle: normTau(targetAngle),
+          liveSpeed,
+          targetSpeed,
+          phase: rand(0, TAU),
+          born: state.time,
+          foldStart: null,
+          foldEnd: null
+        };
+      }
+
+      function addPair(options = {}) {
+        const pair = createPair(options);
+        state.pairs.push(pair);
+        return pair;
+      }
+
+      function seedTutorial() {
+        state.pairs.length = 0;
+        const liveAngle = 2.5;
+        const targetAngle = 4.64;
+        const pair = addPair({ laneIndex: 2, typeIndex: 0, liveAngle, targetAngle, static: true });
+        state.tutorialIdeal = requiredAxis(pair);
+        state.aim = state.tutorialIdeal;
+      }
+
+      function seedMainField() {
+        state.pairs.length = 0;
+        const first = addPair({ laneIndex: 0, typeIndex: 1 });
+        addPair({ laneIndex: 2, typeIndex: 2, align: first });
+        addPair({ laneIndex: 4, typeIndex: 3 });
+      }
+
+      function resetGame() {
+        clearTimeout(overlayTimer);
+        Object.assign(state, {
+          mode: "playing",
+          resumeMode: "playing",
+          time: 0,
+          score: 0,
+          shownScore: 0,
+          level: 1,
+          coherence: 100,
+          chain: 0,
+          maxChain: 0,
+          maxChord: 0,
+          folds: 0,
+          successfulFolds: 0,
+          hits: 0,
+          perfectHits: 0,
+          aim: .61,
+          pairs: [],
+          effects: [],
+          spawnQueue: [],
+          fold: null,
+          tutorial: true,
+          goodCount: 0,
+          flash: 0,
+          shake: 0,
+          levelPulse: 0,
+          spawnSerial: 0
+        });
+        intro.classList.remove("visible");
+        gameover.classList.remove("visible");
+        pauseCard.classList.remove("visible");
+        intro.setAttribute("aria-hidden", "true");
+        gameover.setAttribute("aria-hidden", "true");
+        pauseCard.setAttribute("aria-hidden", "true");
+        coach.classList.add("visible");
+        body.dataset.mode = "playing";
+        seedTutorial();
+        updateHud(true);
+        requestAnimationFrame(() => canvas.focus({ preventScroll: true }));
+        announce("Game started. Aim the crease and fold the solid light onto its hollow echo.");
+      }
+
+      function startGame() {
+        sound.ensure();
+        sound.tone(392, .2, { type: "sine", gain: .04 });
+        resetGame();
+      }
+
+      function completeTutorial() {
+        state.tutorial = false;
+        state.coherence = 100;
+        seedMainField();
+        coach.classList.remove("visible");
+        showToast("Field awake", "Overlapping rim signals reveal a chord", COLORS[0]);
+        announce("Tutorial complete. Match several pairs in one fold to form a chord.");
+      }
+
+      function schedulePair(delay = .32) {
+        state.spawnQueue.push({ at: state.time + delay });
+      }
+
+      function processSpawnQueue() {
+        for (let i = state.spawnQueue.length - 1; i >= 0; i--) {
+          if (state.time < state.spawnQueue[i].at) continue;
+          state.spawnQueue.splice(i, 1);
+          if (state.pairs.length >= desiredPairCount()) continue;
+          const chordChance = state.level >= 2 ? .42 : .22;
+          const align = state.pairs.length && Math.random() < chordChance ? choose(state.pairs) : null;
+          addPair({ align });
+        }
+        while (!state.tutorial && state.pairs.length + state.spawnQueue.length < desiredPairCount()) schedulePair(.15 + state.spawnQueue.length * .16);
+      }
+
+      function updateAimFromEvent(event) {
+        const rect = canvas.getBoundingClientRect();
+        pointer.x = event.clientX - rect.left;
+        pointer.y = event.clientY - rect.top;
+        pointer.seen = true;
+        const dx = pointer.x - view.cx;
+        const dy = pointer.y - view.cy;
+        if (Math.hypot(dx, dy) > 18) state.aim = lineAngle(Math.atan2(dy, dx));
+      }
+
+      function startFold() {
+        if (state.mode !== "playing" || state.pairs.length === 0) return;
+        sound.ensure();
+        state.mode = "folding";
+        body.dataset.mode = "folding";
+        state.folds++;
+        state.fold = {
+          axis: state.aim,
+          elapsed: 0,
+          duration: reduceMotion ? .09 : .265,
+          items: state.pairs.map(pair => ({
+            id: pair.id,
+            from: point(pair.liveAngle, pair.lane),
+            to: point(normTau(2 * state.aim - pair.liveAngle), pair.lane),
+            endAngle: normTau(2 * state.aim - pair.liveAngle)
+          }))
+        };
+        state.flash = .7;
+        addRing(view.cx, view.cy, COLORS[0], view.r * .18, .42);
+        sound.fold();
+      }
+
+      function resolveFold() {
+        const fold = state.fold;
+        if (!fold) return;
+        const matches = [];
+
+        for (const pair of state.pairs) {
+          const item = fold.items.find(entry => entry.id === pair.id);
+          if (!item) continue;
+          pair.liveAngle = item.endAngle;
+          pair.liveSpeed *= -1;
+          const diff = angleDistance(pair.liveAngle, pair.targetAngle);
+          const threshold = thresholdFor(pair);
+          if (diff <= threshold) matches.push({ pair, diff, threshold, accuracy: clamp(1 - diff / threshold, 0, 1) });
+        }
+
+        state.fold = null;
+
+        if (matches.length) {
+          const tutorialHit = state.tutorial;
+          state.successfulFolds++;
+          state.chain++;
+          state.maxChain = Math.max(state.maxChain, state.chain);
+          state.maxChord = Math.max(state.maxChord, matches.length);
+          state.hits += matches.length;
+          const perfect = matches.every(match => match.accuracy >= .78);
+          if (perfect) state.perfectHits += matches.length;
+          const multiplier = currentMultiplier();
+          const chordBoost = 1 + Math.max(0, matches.length - 1) * .72;
+          const precisionSum = matches.reduce((sum, match) => sum + 100 + Math.round(match.accuracy * 110), 0);
+          const gained = Math.round(precisionSum * multiplier * chordBoost);
+          state.score += gained;
+          state.coherence = Math.min(100, state.coherence + 8 + matches.length * 3.5 + (perfect ? 3 : 0));
+          state.shake = matches.length > 1 ? 6 : 2.5;
+          state.flash = matches.length > 1 ? 1 : .72;
+
+          for (const match of matches) {
+            const pos = point(match.pair.targetAngle, match.pair.lane);
+            addBurst(pos.x, pos.y, match.pair.color, matches.length > 1 ? 20 : 13);
+            addRing(pos.x, pos.y, match.pair.color, 12, .55);
+          }
+
+          const ids = new Set(matches.map(match => match.pair.id));
+          state.pairs = state.pairs.filter(pair => !ids.has(pair.id));
+
+          if (matches.length >= 2) {
+            showToast(`${matches.length}-light chord`, `+${gained} · coherence restored`, COLORS[Math.min(matches.length, 4) - 1]);
+            announce(`${matches.length} light chord. ${gained} points.`);
+            if (navigator.vibrate) navigator.vibrate(matches.length >= 3 ? [18, 24, 30] : 22);
+          } else if (perfect) {
+            showToast("Pure fold", `+${gained} · chain ${state.chain}`, matchColor(matches));
+            announce(`Pure fold. ${gained} points. Chain ${state.chain}.`);
+          } else {
+            showToast(state.chain > 2 ? `Chain ${state.chain}` : "Echo found", `+${gained}`, matchColor(matches));
+            announce(`Echo found. ${gained} points.`);
+          }
+
+          multiplierEl.classList.remove("bump");
+          void multiplierEl.offsetWidth;
+          multiplierEl.classList.add("bump");
+          sound.hit(matches.length, perfect);
+
+          if (tutorialHit) {
+            completeTutorial();
+          } else {
+            matches.forEach((_, i) => schedulePair(.28 + i * .13));
+          }
+        } else {
+          if (state.tutorial) {
+            showToast("Almost", "Let the preview settle inside the hollow echo", COLORS[0]);
+            announce("Almost. Align the solid preview with the hollow echo, then fold again.");
+          } else {
+            state.chain = 0;
+            state.coherence = Math.max(0, state.coherence - 13);
+            state.shake = 4;
+            showToast("Empty fold", "Coherence −13", "#ff6b7b");
+            announce("Empty fold. Coherence lost.");
+            sound.miss();
+          }
+        }
+
+        const previousLevel = state.level;
+        state.level = 1 + Math.floor(state.score / 2100);
+        if (state.level > previousLevel) {
+          state.levelPulse = 1;
+          state.coherence = Math.min(100, state.coherence + 14);
+          showToast(`Field ${String(state.level).padStart(2, "0")}`, "Orbit drift increased", COLORS[2]);
+          sound.level();
+          while (state.pairs.length + state.spawnQueue.length < desiredPairCount()) schedulePair(.18 + state.spawnQueue.length * .16);
+        }
+
+        if (state.coherence <= 0) {
+          endGame();
+        } else {
+          state.mode = "playing";
+          body.dataset.mode = "playing";
+        }
+      }
+
+      function matchColor(matches) {
+        return matches[0] ? matches[0].pair.color : COLORS[0];
+      }
+
+      function currentMultiplier() {
+        return 1 + Math.min(10, Math.max(0, state.chain - 1)) * .25;
+      }
+
+      function endGame() {
+        if (state.mode === "gameover") return;
+        state.mode = "gameover";
+        body.dataset.mode = "gameover";
+        coach.classList.remove("visible");
+        const previousHigh = state.high;
+        const isRecord = state.score > previousHigh;
+        if (isRecord) {
+          state.high = state.score;
+          storeNumber("axisonance.high", state.high);
+        }
+        document.getElementById("final-score").textContent = padScore(state.score);
+        document.getElementById("record-label").textContent = isRecord ? "New field record" : "";
+        document.getElementById("result-accuracy").textContent = state.folds ? `${Math.round((state.successfulFolds / state.folds) * 100)}%` : "0%";
+        document.getElementById("result-chain").textContent = state.maxChain;
+        document.getElementById("result-chord").textContent = state.maxChord;
+        document.getElementById("gameover-best").textContent = `Best ${padScore(state.high)} · Field ${String(state.level).padStart(2, "0")}`;
+        sound.end();
+        announce(`Game over. Score ${state.score}. ${isRecord ? "New high score." : `Best score ${state.high}.`}`);
+        overlayTimer = setTimeout(() => {
+          gameover.classList.add("visible");
+          gameover.setAttribute("aria-hidden", "false");
+          document.getElementById("restart-button").focus({ preventScroll: true });
+        }, reduceMotion ? 80 : 560);
+      }
+
+      function togglePause(forceResume = false) {
+        if (forceResume && state.mode !== "paused") return;
+        if (state.mode === "playing" || state.mode === "folding") {
+          state.resumeMode = state.mode;
+          state.mode = "paused";
+          body.dataset.mode = "paused";
+          pauseCard.classList.add("visible");
+          pauseCard.setAttribute("aria-hidden", "false");
+          requestAnimationFrame(() => document.getElementById("resume-button").focus({ preventScroll: true }));
+          announce("Game paused.");
+        } else if (state.mode === "paused") {
+          state.mode = state.resumeMode;
+          body.dataset.mode = state.mode;
+          pauseCard.classList.remove("visible");
+          pauseCard.setAttribute("aria-hidden", "true");
+          canvas.focus({ preventScroll: true });
+          lastFrame = performance.now();
+          announce("Game resumed.");
+        }
+      }
+
+      function announce(text) {
+        ariaStatus.textContent = "";
+        requestAnimationFrame(() => { ariaStatus.textContent = text; });
+      }
+
+      function showToast(text, subtext = "", color = COLORS[0]) {
+        const node = document.createElement("div");
+        node.className = "toast";
+        node.style.color = color;
+        node.textContent = text;
+        if (subtext) {
+          const small = document.createElement("small");
+          small.textContent = subtext;
+          node.appendChild(small);
+        }
+        toastLayer.appendChild(node);
+        setTimeout(() => node.remove(), 1350);
+      }
+
+      function addBurst(x, y, color, amount = 14) {
+        const particles = Array.from({ length: reduceMotion ? Math.ceil(amount / 2) : amount }, () => ({
+          angle: rand(0, TAU),
+          speed: rand(35, 145),
+          size: rand(.8, 2.8),
+          spin: rand(-4, 4)
+        }));
+        state.effects.push({ type: "burst", x, y, color, particles, age: 0, duration: .72 });
+      }
+
+      function addRing(x, y, color, radius = 10, duration = .45) {
+        state.effects.push({ type: "ring", x, y, color, radius, age: 0, duration });
+      }
+
+      function update(dt) {
+        state.demoTime += dt;
+        state.flash = Math.max(0, state.flash - dt * 2.4);
+        state.shake = Math.max(0, state.shake - dt * 13);
+        state.levelPulse = Math.max(0, state.levelPulse - dt * 1.5);
+        updateEffects(dt);
+
+        if (state.mode === "paused" || state.mode === "intro" || state.mode === "gameover") {
+          state.shownScore += (state.score - state.shownScore) * Math.min(1, dt * 8);
+          updateHud();
+          return;
+        }
+
+        state.time += dt;
+
+        if (state.mode === "playing") {
+          const turn = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+          if (turn) state.aim = lineAngle(state.aim + turn * dt * 1.75);
+
+          if (!state.tutorial) {
+            const driftBoost = 1 + Math.min(.65, (state.level - 1) * .045);
+            for (const pair of state.pairs) {
+              pair.liveAngle = normTau(pair.liveAngle + pair.liveSpeed * dt * driftBoost);
+              pair.targetAngle = normTau(pair.targetAngle + pair.targetSpeed * dt * driftBoost);
+            }
+            state.coherence -= dt * (1.52 + Math.min(2.2, (state.level - 1) * .16));
+            if (state.coherence <= 0) {
+              state.coherence = 0;
+              endGame();
+            }
+          }
+          processSpawnQueue();
+        } else if (state.mode === "folding" && state.fold) {
+          state.fold.elapsed += dt;
+          if (state.fold.elapsed >= state.fold.duration) resolveFold();
+        }
+
+        state.shownScore += (state.score - state.shownScore) * Math.min(1, dt * 10);
+        updateHud();
+      }
+
+      function updateEffects(dt) {
+        for (let i = state.effects.length - 1; i >= 0; i--) {
+          const effect = state.effects[i];
+          effect.age += dt;
+          if (effect.age >= effect.duration) state.effects.splice(i, 1);
+        }
+      }
+
+      function updateHud(force = false) {
+        const shown = Math.round(force ? state.score : state.shownScore);
+        scoreEl.textContent = padScore(shown);
+        levelEl.textContent = `Field ${String(state.level).padStart(2, "0")}`;
+        highEl.textContent = `Best ${padScore(Math.max(state.high, state.score))}`;
+        multiplierEl.textContent = `×${currentMultiplier().toFixed(2)}`;
+        const coherence = clamp(state.coherence, 0, 100);
+        coherenceFill.style.transform = `scaleX(${coherence / 100})`;
+        coherenceValue.textContent = `${Math.ceil(coherence)}%`;
+        if (coherence < 25) {
+          coherenceFill.style.background = "linear-gradient(90deg, #ff425d, #ff8a6f)";
+        } else {
+          coherenceFill.style.background = "linear-gradient(90deg, #ff6ca8, #b892ff, #67f5ff)";
+        }
+      }
+
+      function drawBackground() {
+        const bg = ctx.createRadialGradient(view.cx, view.cy, 0, view.cx, view.cy, Math.max(view.w, view.h) * .7);
+        bg.addColorStop(0, state.flash ? `rgba(19, 22, ${Math.round(48 + state.flash * 28)}, 1)` : "#101326");
+        bg.addColorStop(.46, "#090b18");
+        bg.addColorStop(1, "#05060d");
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, view.w, view.h);
+
+        const px = pointer.seen ? (pointer.x / view.w - .5) : 0;
+        const py = pointer.seen ? (pointer.y / view.h - .5) : 0;
+        for (const star of stars) {
+          const x = star.x * view.w + px * star.depth * 13;
+          const y = star.y * view.h + py * star.depth * 10;
+          const flicker = .24 + Math.sin(state.demoTime * (.45 + star.depth * .7) + star.phase) * .11;
+          ctx.fillStyle = `rgba(184, 204, 255, ${flicker * star.depth})`;
+          ctx.beginPath();
+          ctx.arc(x, y, star.size, 0, TAU);
+          ctx.fill();
+        }
+
+        const aura = ctx.createRadialGradient(view.cx, view.cy, view.r * .1, view.cx, view.cy, view.r * 1.25);
+        aura.addColorStop(0, "rgba(111, 104, 255, .055)");
+        aura.addColorStop(.65, "rgba(64, 88, 178, .025)");
+        aura.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = aura;
+        ctx.fillRect(view.cx - view.r * 1.3, view.cy - view.r * 1.3, view.r * 2.6, view.r * 2.6);
+      }
+
+      function drawArenaBase() {
+        ctx.save();
+        ctx.translate(view.cx, view.cy);
+
+        for (let i = 0; i < LANES.length; i++) {
+          const radius = view.r * LANES[i];
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, 0, TAU);
+          ctx.strokeStyle = `rgba(156, 175, 229, ${i % 2 ? .046 : .065})`;
+          ctx.lineWidth = 1;
+          ctx.setLineDash(i % 2 ? [1.5, 8] : []);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+
+        const outerGlow = ctx.createRadialGradient(0, 0, view.r * .88, 0, 0, view.r * 1.04);
+        outerGlow.addColorStop(0, "rgba(103, 245, 255, 0)");
+        outerGlow.addColorStop(.76, "rgba(103, 245, 255, .025)");
+        outerGlow.addColorStop(1, "rgba(103, 245, 255, 0)");
+        ctx.fillStyle = outerGlow;
+        ctx.beginPath();
+        ctx.arc(0, 0, view.r * 1.05, 0, TAU);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, view.r * .84, 0, TAU);
+        ctx.strokeStyle = "rgba(184, 202, 250, .11)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        const tickCount = 72;
+        for (let i = 0; i < tickCount; i++) {
+          const angle = i / tickCount * TAU;
+          const major = i % 6 === 0;
+          const r1 = view.r * (major ? .835 : .84);
+          const r2 = view.r * (major ? .858 : .85);
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(angle) * r1, Math.sin(angle) * r1);
+          ctx.lineTo(Math.cos(angle) * r2, Math.sin(angle) * r2);
+          ctx.strokeStyle = major ? "rgba(188, 207, 255, .16)" : "rgba(188, 207, 255, .055)";
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function shapePath(shape, radius) {
+        ctx.beginPath();
+        if (shape === "circle") {
+          ctx.arc(0, 0, radius, 0, TAU);
+          return;
+        }
+        const sides = shape === "diamond" ? 4 : shape === "triangle" ? 3 : shape === "hex" ? 6 : 8;
+        const inner = shape === "spark" ? .38 : 1;
+        const count = shape === "spark" ? sides * 2 : sides;
+        const rotation = shape === "diamond" ? Math.PI / 4 : -HALF_PI;
+        for (let i = 0; i < count; i++) {
+          const r = shape === "spark" && i % 2 ? radius * inner : radius;
+          const angle = rotation + i / count * TAU;
+          const x = Math.cos(angle) * r;
+          const y = Math.sin(angle) * r;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+      }
+
+      function drawTarget(pair, time = state.time) {
+        const pos = point(pair.targetAngle, pair.lane);
+        const size = clamp(view.r * .027, 7.5, 11.5);
+        const pulse = 1 + Math.sin(time * 2.8 + pair.phase) * .08;
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        ctx.rotate(time * .25 + pair.phase);
+        ctx.globalCompositeOperation = "lighter";
+        ctx.shadowColor = pair.color;
+        ctx.shadowBlur = 13;
+        shapePath(pair.shape, size * 1.48 * pulse);
+        ctx.strokeStyle = hexToRgba(pair.color, .69);
+        ctx.lineWidth = 1.25;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        shapePath(pair.shape, size * .72 * pulse);
+        ctx.strokeStyle = hexToRgba(pair.color, .2);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.globalAlpha = .5;
+        ctx.beginPath();
+        ctx.arc(0, 0, size * 2.15 * pulse, -1.2, -.35);
+        ctx.strokeStyle = hexToRgba(pair.color, .42);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function liveDisplayPosition(pair) {
+        if (state.mode === "folding" && state.fold) {
+          const item = state.fold.items.find(entry => entry.id === pair.id);
+          if (item) {
+            const t = ease(clamp(state.fold.elapsed / state.fold.duration, 0, 1));
+            return { x: lerp(item.from.x, item.to.x, t), y: lerp(item.from.y, item.to.y, t), progress: t };
+          }
+        }
+        return { ...point(pair.liveAngle, pair.lane), progress: 0 };
+      }
+
+      function drawLive(pair, time = state.time) {
+        const pos = liveDisplayPosition(pair);
+        const size = clamp(view.r * .025, 7, 10.5);
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+
+        if (state.mode !== "folding") {
+          for (let i = 4; i >= 1; i--) {
+            const trailAngle = pair.liveAngle - pair.liveSpeed * i * .11;
+            const trail = point(trailAngle, pair.lane);
+            ctx.globalAlpha = .025 + (4 - i) * .018;
+            ctx.fillStyle = pair.color;
+            ctx.beginPath();
+            ctx.arc(trail.x, trail.y, size * (.24 + (4 - i) * .08), 0, TAU);
+            ctx.fill();
+          }
+        } else if (pos.progress > 0 && pos.progress < 1) {
+          ctx.strokeStyle = hexToRgba(pair.color, .18);
+          ctx.lineWidth = size * .85;
+          ctx.lineCap = "round";
+          const item = state.fold.items.find(entry => entry.id === pair.id);
+          ctx.beginPath();
+          ctx.moveTo(item.from.x, item.from.y);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.stroke();
+        }
+
+        ctx.translate(pos.x, pos.y);
+        ctx.rotate(time * .8 + pair.phase);
+        ctx.globalAlpha = 1;
+        ctx.shadowColor = pair.color;
+        ctx.shadowBlur = 20;
+        shapePath(pair.shape, size);
+        ctx.fillStyle = pair.color;
+        ctx.fill();
+        ctx.shadowBlur = 5;
+        shapePath(pair.shape, size * .48);
+        ctx.fillStyle = "rgba(255,255,255,.92)";
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawRimSignals(pairs) {
+        const baseR = view.r * .846;
+        ctx.save();
+        ctx.translate(view.cx, view.cy);
+        ctx.globalCompositeOperation = "lighter";
+        for (const pair of pairs) {
+          const axis = requiredAxis(pair);
+          const span = clamp(thresholdFor(pair) * .7, .038, .095);
+          for (const a of [axis, axis + Math.PI]) {
+            ctx.beginPath();
+            ctx.arc(0, 0, baseR, a - span, a + span);
+            ctx.strokeStyle = hexToRgba(pair.color, state.tutorial ? .82 : .31);
+            ctx.lineWidth = state.tutorial ? 4 : 2.2;
+            ctx.shadowColor = pair.color;
+            ctx.shadowBlur = state.tutorial ? 15 : 8;
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      }
+
+      function drawAim(pairs, axis, preview = true) {
+        const dx = Math.cos(axis);
+        const dy = Math.sin(axis);
+        const extent = view.r * .87;
+        const good = [];
+
+        if (preview) {
+          for (const pair of pairs) {
+            const reflected = normTau(2 * axis - pair.liveAngle);
+            const diff = angleDistance(reflected, pair.targetAngle);
+            if (diff <= thresholdFor(pair)) good.push(pair.id);
+          }
+          state.goodCount = good.length;
+        }
+
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        const gradient = ctx.createLinearGradient(view.cx - dx * extent, view.cy - dy * extent, view.cx + dx * extent, view.cy + dy * extent);
+        gradient.addColorStop(0, "rgba(103,245,255,0)");
+        gradient.addColorStop(.15, good.length ? "rgba(103,245,255,.65)" : "rgba(157,181,255,.24)");
+        gradient.addColorStop(.5, good.length ? "rgba(255,255,255,.9)" : "rgba(184,202,255,.48)");
+        gradient.addColorStop(.85, good.length ? "rgba(103,245,255,.65)" : "rgba(157,181,255,.24)");
+        gradient.addColorStop(1, "rgba(103,245,255,0)");
+        ctx.beginPath();
+        ctx.moveTo(view.cx - dx * extent, view.cy - dy * extent);
+        ctx.lineTo(view.cx + dx * extent, view.cy + dy * extent);
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = good.length ? 1.7 : 1;
+        ctx.shadowColor = good.length ? COLORS[0] : "transparent";
+        ctx.shadowBlur = good.length ? 13 : 0;
+        ctx.stroke();
+
+        for (const sign of [-1, 1]) {
+          const x = view.cx + dx * extent * sign;
+          const y = view.cy + dy * extent * sign;
+          ctx.beginPath();
+          ctx.arc(x, y, good.length ? 4 : 2.6, 0, TAU);
+          ctx.fillStyle = good.length ? "rgba(225,253,255,.94)" : "rgba(181,202,255,.38)";
+          ctx.fill();
+        }
+
+        if (preview) {
+          for (const pair of pairs) {
+            const reflectedAngle = normTau(2 * axis - pair.liveAngle);
+            const pos = point(reflectedAngle, pair.lane);
+            const isGood = good.includes(pair.id);
+            const size = clamp(view.r * .022, 6.5, 9.3);
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(state.time * .55 + pair.phase);
+            ctx.shadowColor = pair.color;
+            ctx.shadowBlur = isGood ? 20 : 8;
+            shapePath(pair.shape, size * (isGood ? 1.05 : .84));
+            ctx.fillStyle = hexToRgba(pair.color, isGood ? .66 : .16);
+            ctx.fill();
+            if (!isGood) {
+              shapePath(pair.shape, size * 1.03);
+              ctx.strokeStyle = hexToRgba(pair.color, .25);
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+        }
+        ctx.restore();
+      }
+
+      function drawCore() {
+        const pulse = 1 + Math.sin(state.demoTime * 2.1) * .06 + state.levelPulse * .18;
+        const radius = clamp(view.r * .052, 18, 27) * pulse;
+        ctx.save();
+        ctx.translate(view.cx, view.cy);
+        ctx.globalCompositeOperation = "lighter";
+        const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.6);
+        glow.addColorStop(0, `rgba(226, 250, 255, ${.3 + state.flash * .25})`);
+        glow.addColorStop(.23, `rgba(103, 245, 255, ${.16 + state.flash * .23})`);
+        glow.addColorStop(1, "rgba(103, 245, 255, 0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 2.7, 0, TAU);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, TAU);
+        ctx.strokeStyle = `rgba(191, 242, 255, ${.2 + state.flash * .35})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * .28, 0, TAU);
+        ctx.fillStyle = `rgba(232, 252, 255, ${.42 + state.flash * .35})`;
+        ctx.shadowColor = COLORS[0];
+        ctx.shadowBlur = 14;
+        ctx.fill();
+
+        const text = state.goodCount > 1 ? `${state.goodCount} CHORD` : state.goodCount === 1 ? "LINK" : "FOLD";
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = state.goodCount ? "rgba(222,252,255,.82)" : "rgba(184,198,229,.34)";
+        ctx.font = `800 ${clamp(view.r * .017, 7, 9)}px Inter, ui-sans-serif, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.letterSpacing = "1px";
+        ctx.fillText(text, 0, radius + 14);
+        ctx.restore();
+      }
+
+      function drawFoldWave() {
+        if (!state.fold) return;
+        const t = clamp(state.fold.elapsed / state.fold.duration, 0, 1);
+        const alpha = Math.sin(t * Math.PI);
+        const axis = state.fold.axis;
+        const dx = Math.cos(axis);
+        const dy = Math.sin(axis);
+        const nx = -dy;
+        const ny = dx;
+        const spread = Math.sin(t * Math.PI) * view.r * .17;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (const sign of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(view.cx - dx * view.r * .9 + nx * spread * sign, view.cy - dy * view.r * .9 + ny * spread * sign);
+          ctx.lineTo(view.cx + dx * view.r * .9 + nx * spread * sign, view.cy + dy * view.r * .9 + ny * spread * sign);
+          ctx.strokeStyle = `rgba(103,245,255,${alpha * .14})`;
+          ctx.lineWidth = 2;
+          ctx.shadowColor = COLORS[0];
+          ctx.shadowBlur = 15;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawEffects() {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (const effect of state.effects) {
+          const t = clamp(effect.age / effect.duration, 0, 1);
+          const alpha = 1 - t;
+          if (effect.type === "ring") {
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.radius + t * (view.r * .13), 0, TAU);
+            ctx.strokeStyle = hexToRgba(effect.color, alpha * .5);
+            ctx.lineWidth = 1.5 * (1 - t) + .3;
+            ctx.shadowColor = effect.color;
+            ctx.shadowBlur = 12;
+            ctx.stroke();
+          } else if (effect.type === "burst") {
+            for (const particle of effect.particles) {
+              const distance = particle.speed * effect.age * (1 - t * .28);
+              const x = effect.x + Math.cos(particle.angle + particle.spin * effect.age * .08) * distance;
+              const y = effect.y + Math.sin(particle.angle + particle.spin * effect.age * .08) * distance;
+              ctx.beginPath();
+              ctx.arc(x, y, particle.size * (1 - t * .65), 0, TAU);
+              ctx.fillStyle = hexToRgba(effect.color, alpha * .78);
+              ctx.fill();
+            }
+          }
+        }
+        ctx.restore();
+      }
+
+      function drawTutorialGuide() {
+        if (!state.tutorial || !state.pairs.length) return;
+        const pair = state.pairs[0];
+        const axis = requiredAxis(pair);
+        const x = view.cx + Math.cos(axis) * view.r * .93;
+        const y = view.cy + Math.sin(axis) * view.r * .93;
+        const pulse = 1 + Math.sin(state.demoTime * 4) * .12;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.beginPath();
+        ctx.arc(x, y, 8 * pulse, 0, TAU);
+        ctx.strokeStyle = "rgba(103,245,255,.78)";
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = COLORS[0];
+        ctx.shadowBlur = 14;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, 16 * pulse, 0, TAU);
+        ctx.strokeStyle = "rgba(103,245,255,.16)";
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function demoPair(index) {
+        const lane = LANES[index * 2];
+        const color = COLORS[index];
+        const shape = SHAPES[index];
+        const liveAngle = state.demoTime * (.10 + index * .025) + index * 2.1;
+        const targetAngle = index === 0 ? 2 * (.44 + Math.sin(state.demoTime * .18) * .14) - liveAngle : liveAngle + 1.2 + index * .72;
+        return { id: -index - 1, lane, laneIndex: index * 2, color, shape, liveAngle: normTau(liveAngle), targetAngle: normTau(targetAngle), liveSpeed: .1, targetSpeed: 0, phase: index * 1.9 };
+      }
+
+      function drawDemo() {
+        const pairs = [demoPair(0), demoPair(1), demoPair(2)];
+        pairs.forEach(pair => drawTarget(pair, state.demoTime));
+        pairs.forEach(pair => drawLive(pair, state.demoTime));
+        drawAim(pairs, .44 + Math.sin(state.demoTime * .18) * .14, true);
+      }
+
+      function draw() {
+        drawBackground();
+        ctx.save();
+        if (state.shake && !reduceMotion) {
+          ctx.translate(rand(-state.shake, state.shake), rand(-state.shake, state.shake));
+        }
+        drawArenaBase();
+
+        if (state.mode === "intro") {
+          drawDemo();
+        } else {
+          drawRimSignals(state.pairs);
+          for (const pair of state.pairs) drawTarget(pair);
+          if (state.mode === "playing" || state.mode === "paused") drawAim(state.pairs, state.aim, true);
+          if (state.mode === "folding") drawAim(state.pairs, state.fold.axis, false);
+          for (const pair of state.pairs) drawLive(pair);
+          drawFoldWave();
+          drawTutorialGuide();
+        }
+
+        drawCore();
+        drawEffects();
+        ctx.restore();
+
+        if (state.flash > 0) {
+          const flash = ctx.createRadialGradient(view.cx, view.cy, 0, view.cx, view.cy, view.r * 1.2);
+          flash.addColorStop(0, `rgba(115,242,255,${state.flash * .035})`);
+          flash.addColorStop(1, "rgba(115,242,255,0)");
+          ctx.fillStyle = flash;
+          ctx.fillRect(0, 0, view.w, view.h);
+        }
+      }
+
+      function loop(now) {
+        const dt = Math.min(.034, Math.max(0, (now - lastFrame) / 1000));
+        lastFrame = now;
+        update(dt);
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      canvas.addEventListener("pointermove", event => {
+        updateAimFromEvent(event);
+      }, { passive: true });
+
+      canvas.addEventListener("pointerdown", event => {
+        if (state.mode !== "playing") return;
+        event.preventDefault();
+        pointer.active = true;
+        updateAimFromEvent(event);
+        if (canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
+        sound.ensure();
+      });
+
+      canvas.addEventListener("pointerup", event => {
+        if (!pointer.active) return;
+        event.preventDefault();
+        pointer.active = false;
+        updateAimFromEvent(event);
+        startFold();
+      });
+
+      canvas.addEventListener("pointercancel", () => { pointer.active = false; });
+
+      addEventListener("keydown", event => {
+        const buttonFocused = event.target && event.target.tagName === "BUTTON";
+        if (["ArrowLeft", "ArrowRight"].includes(event.code) || (event.code === "Space" && !buttonFocused)) event.preventDefault();
+        if (event.code === "ArrowLeft" || event.code === "KeyA") keys.left = true;
+        if (event.code === "ArrowRight" || event.code === "KeyD") keys.right = true;
+        if ((event.code === "Space" || event.code === "Enter") && !event.repeat && !buttonFocused) {
+          if (state.mode === "playing") startFold();
+          else if (state.mode === "intro") startGame();
+          else if (state.mode === "gameover") startGame();
+        }
+        if ((event.code === "KeyP" || event.code === "Escape") && !event.repeat && !["intro", "gameover"].includes(state.mode)) togglePause();
+        if (event.code === "KeyM" && !event.repeat) sound.toggle();
+      });
+
+      addEventListener("keyup", event => {
+        if (event.code === "ArrowLeft" || event.code === "KeyA") keys.left = false;
+        if (event.code === "ArrowRight" || event.code === "KeyD") keys.right = false;
+      });
+
+      addEventListener("resize", resize, { passive: true });
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden && (state.mode === "playing" || state.mode === "folding")) togglePause();
+      });
+
+      document.getElementById("start-button").addEventListener("click", startGame);
+      document.getElementById("restart-button").addEventListener("click", startGame);
+      document.getElementById("resume-button").addEventListener("click", () => togglePause(true));
+      document.getElementById("pause-button").addEventListener("click", () => togglePause());
+      muteButton.addEventListener("click", () => { sound.ensure(); sound.toggle(); });
+
+      resize();
+      updateHud(true);
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
